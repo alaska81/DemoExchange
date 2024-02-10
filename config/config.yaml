@@ -1,0 +1,29 @@
+webserver:
+  host: ""
+  port: "44444"
+  portTLS: "44333"
+  timeout: 10
+  certCrt: "./certificate/server.crt"
+  certKey: "./certificate/server.key"
+  allowServiceTokens: ["769d459d2ef20b0846bee9e50364435ba451f4d8"]
+
+service:
+  keyLimit: 3
+
+db:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  database: "exchange"
+  minOpenConns: 1
+  maxOpenConns: 10
+
+apiservice:
+  address: "https://api1.cryptorobotics.net:55443"
+  timeout: 10
+
+logger:
+  level: "trace"
+  path: "./logs"
+  file: "all.log"

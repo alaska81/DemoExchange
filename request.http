@@ -1,0 +1,193 @@
+###
+GET http://localhost:44444/v1/market/symbols?exchange=demo_futures HTTP/1.1
+content-type: application/json
+
+
+
+###
+GET http://localhost:44444/v1/market/tickers?exchange=demo_futures HTTP/1.1
+content-type: application/json
+
+
+
+###
+GET http://localhost:44444/v1/market/orderbook?exchange=demo_futures&symbol=BTC/USDT HTTP/1.1
+content-type: application/json
+
+
+
+###
+GET http://localhost:44444/v1/market/history/orders?exchange=demo_futures HTTP/1.1
+content-type: application/json
+
+
+
+###
+POST http://localhost:44444/v1/apikey/create HTTP/1.1
+content-type: application/json
+secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
+
+{
+    "service": "cryptorobotics",
+    "user_id": "467"
+}
+
+###
+POST https://demo-exchange.cryptorobotics.net/v1/apikey/create HTTP/1.1
+content-type: application/json
+secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
+
+{
+    "service": "cryptorobotics",
+    "user_id": "2658"
+}
+
+
+
+###
+POST http://localhost:44444/v1/apikey/disable HTTP/1.1
+content-type: application/json
+secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
+
+{
+    "token": "d5f5f6048166facbf9c239b9ceefa3c5ea29ad3e"
+}
+
+
+
+###
+GET http://localhost:44444/v1/wallet/balances?exchange=demo_futures HTTP/1.1
+Content-Type: application/json
+Token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+
+
+### 
+POST http://localhost:44444/v1/wallet/deposit HTTP/1.1
+content-type: application/json
+token: f28c9d74cfac85b40090e52e38a829ccbc2b81c8
+
+{
+    "exchange": "demo_futures",
+    "coin": "USDT",
+    "amount": 500
+}
+
+
+
+### 
+POST http://localhost:44444/v1/wallet/withdraw HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "exchange": "demo_futures",
+    "coin": "USDT",
+    "amount": 500
+}
+
+
+
+### 
+POST http://localhost:44444/v1/order/create HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "type": "market",
+    "position_side": "long",
+    "side": "sell",
+    "amount": 0.01
+}
+
+### 
+POST http://localhost:44444/v1/order/create HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "type": "limit",
+    "side": "buy",
+    "amount": 0.001,
+    "price": 43000
+}
+
+
+
+### 
+GET http://localhost:44444/v1/order/get?exchange=demo_futures&order_uid=8591bc42-1479-45be-ad6a-d7e20205fc98 HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+### 
+GET https://demo-exchange.cryptorobotics.net/v1/order/get?exchange=demo_futures&order_uid=6a4b91cb-ad15-45f4-82d7-9b348ff070ad HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+
+
+### 
+POST http://localhost:44444/v1/order/cancel HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "order_uid": "8591bc42-1479-45be-ad6a-d7e20205fc98"
+}
+
+### 
+POST https://demo-exchange.cryptorobotics.net/v1/order/cancel HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "order_uid": "6a4b91cb-ad15-45f4-82d7-9b348ff070ad"
+}
+
+
+
+### 
+GET http://localhost:44444/v1/order/list?exchange=demo_futures HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+### 
+GET http://localhost:44444/v1/order/list?exchange=demo_futures&status=open HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+
+
+### 
+GET http://localhost:44444/v1/position/list?exchange=demo_futures HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+### 
+GET https://demo-exchange.cryptorobotics.net/v1/position/list?exchange=demo_futures HTTP/1.1
+content-type: application/json
+token: b14fd25383a5d7c8c0f5de23cf6ee1194b867aed
+
+
+
+### 
+POST http://localhost:44444/v1/position/mode HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+{
+    "mode": "oneway"
+}
+
+### 
+POST https://demo-exchange.cryptorobotics.net/v1/position/mode HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "mode": "hedge"
+}
