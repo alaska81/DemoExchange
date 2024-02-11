@@ -98,7 +98,7 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
     "symbol": "BTC/USDT",
     "type": "market",
     "position_side": "long",
-    "side": "sell",
+    "side": "buy",
     "amount": 0.01
 }
 
@@ -228,7 +228,7 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
 {
     "exchange": "demo_futures",
     "symbol": "BTC/USDT",
-    "leverage": 5
+    "leverage": 10
 }
 
 ### 

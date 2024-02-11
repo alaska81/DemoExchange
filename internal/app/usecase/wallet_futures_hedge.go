@@ -231,6 +231,7 @@ func (uc *Usecase) appendBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx,
 	}
 
 	position.Amount += order.Amount
+	position.Margin = position.Amount * position.Price / float64(position.Leverage)
 
 	if position.Price == 0 {
 		position.Price = order.Price
@@ -275,6 +276,7 @@ func (uc *Usecase) appendBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx
 		return apperror.ErrInsufficientFunds
 	}
 
+	position.Margin = position.Amount * position.Price / float64(position.Leverage)
 	position.UpdateTS = order.UpdateTS
 
 	err = uc.savePosition(ctx, tx, position)

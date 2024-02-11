@@ -21,10 +21,11 @@ type Position struct {
 	Amount      float64          `json:"amount" db:"amount"`
 	Price       float64          `json:"price" db:"price"`
 	MarkPrice   float64          `json:"mark_price" db:"-"`
+	Margin      float64          `json:"margin" db:"margin"`
+	HoldAmount  float64          `json:"-" db:"hold_amount"`
 	CreateTS    int64            `json:"create_ts" db:"create_ts"`
 	UpdateTS    int64            `json:"update_ts" db:"update_ts"`
 	IsNew       bool             `json:"-" db:"-"`
-	HoldAmount  float64          `json:"-" db:"hold_amount"`
 }
 
 type PositionMode string

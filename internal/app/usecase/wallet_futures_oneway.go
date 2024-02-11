@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/jackc/pgx/v5"
 
@@ -186,6 +187,7 @@ func (uc *Usecase) appendBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, or
 		}
 	}
 
+	position.Margin = math.Abs(position.Amount) * position.Price / float64(position.Leverage)
 	position.UpdateTS = order.UpdateTS
 
 	err = uc.savePosition(ctx, tx, position)
