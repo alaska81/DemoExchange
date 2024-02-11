@@ -143,8 +143,9 @@ func (uc *Usecase) OrdersList(ctx context.Context, exchange entities.Exchange, a
 }
 
 func (uc *Usecase) ProcessPendingOrders(ctx context.Context) error {
-	orders, err := uc.order.SelectAllPendingOrders(ctx)
+	orders, err := uc.order.SelectPendingOrders(ctx)
 	if err != nil {
+		uc.log.Error(fmt.Sprintf("ProcessPendingOrders:SelectPendingOrders error: %v", err))
 		return err
 	}
 
@@ -212,4 +213,18 @@ func (uc *Usecase) updateOrder(ctx context.Context, order *entities.Order) {
 			return
 		}
 	}
+}
+
+func (uc *Usecase) checkPresentPendingOrders(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol *entities.Symbol) error {
+	orders, err := uc.order.SelectPendingOrdersBySymbol(ctx, exchange, accountUID, symbol)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("checkPresentPendingOrders:SelectPendingOrdersBySymbol [account_uid: %v, symbol: %v] error: %v", accountUID, symbol, err))
+		return apperror.ErrRequestError
+	}
+
+	if len(orders) > 0 {
+		return apperror.ErrOpenOrdersExists
+	}
+
+	return nil
 }

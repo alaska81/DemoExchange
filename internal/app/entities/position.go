@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	DefaultPositionType PositionType     = "isolated"
-	DefaultLeverage     PositionLeverage = 10
+	DefaultMarginType MarginType       = "isolated"
+	DefaultLeverage   PositionLeverage = 10
 )
 
 type Position struct {
@@ -15,7 +15,7 @@ type Position struct {
 	Exchange    Exchange         `json:"exchange" db:"exchange"`
 	Symbol      Symbol           `json:"symbol" db:"symbol"`
 	Mode        PositionMode     `json:"mode" db:"position_mode"`
-	Type        PositionType     `json:"type" db:"position_type"`
+	MarginType  MarginType       `json:"type" db:"position_mode"`
 	Leverage    PositionLeverage `json:"leverage" db:"leverage"`
 	Side        PositionSide     `json:"side" db:"side"`
 	Amount      float64          `json:"amount" db:"amount"`
@@ -35,11 +35,11 @@ const (
 	PositionModeHedge  PositionMode = "hedge"
 )
 
-type PositionType string
+type MarginType string
 
 const (
-	PositionTypeIsolated PositionType = "isolated"
-	PositionTypeCross    PositionType = "cross"
+	MarginTypeIsolated MarginType = "isolated"
+	MarginTypeCross    MarginType = "cross"
 )
 
 type PositionLeverage int32
@@ -70,7 +70,7 @@ func NewPosition(account *Account, exchange Exchange, symbol Symbol, positionSid
 		Exchange:    exchange,
 		Symbol:      symbol,
 		Mode:        account.PositionMode,
-		Type:        DefaultPositionType,
+		MarginType:  DefaultMarginType,
 		Leverage:    DefaultLeverage,
 		Side:        positionSide,
 		CreateTS:    ts,

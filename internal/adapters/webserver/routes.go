@@ -592,7 +592,7 @@ func (r *Routes) postPositionTypeHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetPositionType(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.PositionType(req.Type))
+	err := r.usecase.SetPositionMarginType(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.MarginType(req.Type))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

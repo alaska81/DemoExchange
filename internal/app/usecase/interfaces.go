@@ -39,7 +39,8 @@ type OrderStorage interface {
 	SelectOrder(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, orderUID string) (*entities.Order, error)
 	UpdateOrder(ctx context.Context, order *entities.Order) error
 	SelectOrders(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, statuses []entities.OrderStatus, limit int) ([]*entities.Order, error)
-	SelectAllPendingOrders(ctx context.Context) ([]*entities.Order, error)
+	SelectPendingOrders(ctx context.Context) ([]*entities.Order, error)
+	SelectPendingOrdersBySymbol(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol *entities.Symbol) ([]*entities.Order, error)
 }
 
 type PositionStorage interface {
@@ -47,7 +48,8 @@ type PositionStorage interface {
 	UpdatePosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error
 	SelectPositionBySide(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
 	SelectPositionsBySymbol(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
-	SelectAccountPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error)
+	SelectAccountPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
+	SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
 }
 
 type Storage interface {

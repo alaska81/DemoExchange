@@ -33,7 +33,7 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 
 	result := make([]*entities.Position, 0, count)
 
-	positions, err := uc.position.SelectAccountPositions(ctx, accountUID)
+	positions, err := uc.position.SelectAccountPositions(ctx, exchange, accountUID)
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("PositionsList:SelectAccountPositions [AccountUID: %s] error: %v", accountUID, err))
 		return nil, err
@@ -80,20 +80,27 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 	return result, nil
 }
 
-func (uc *Usecase) SetPositionType(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, positionType entities.PositionType) error {
+func (uc *Usecase) SetPositionMarginType(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, marginType entities.MarginType) error {
 	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
-		positions, err := uc.getPositionsBySymbol(ctx, tx, accountUID, exchange, symbol)
+		if err := uc.checkPresentPendingOrders(ctx, exchange, accountUID, &symbol); err != nil {
+			return apperror.ErrSetMarginType.Wrap(err)
+		}
+
+		positions, err := uc.getPositionsBySymbol(ctx, tx, exchange, accountUID, symbol)
 		if err != nil {
-			return err
+			return apperror.ErrSetMarginType.Wrap(err)
 		}
 
 		for _, position := range positions {
 			position := position
-			position.Type = positionType
+			if position.Amount != 0 {
+				return apperror.ErrSetMarginType.Wrap(apperror.ErrPositionExists)
+			}
 
-			err = uc.savePosition(ctx, tx, position)
-			if err != nil {
-				return err
+			position.MarginType = marginType
+
+			if err := uc.savePosition(ctx, tx, position); err != nil {
+				return apperror.ErrSetMarginType.Wrap(err)
 			}
 		}
 
@@ -103,18 +110,25 @@ func (uc *Usecase) SetPositionType(ctx context.Context, exchange entities.Exchan
 
 func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, leverage entities.PositionLeverage) error {
 	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
-		positions, err := uc.getPositionsBySymbol(ctx, tx, accountUID, exchange, symbol)
+		if err := uc.checkPresentPendingOrders(ctx, exchange, accountUID, &symbol); err != nil {
+			return apperror.ErrSetLeverage.Wrap(err)
+		}
+
+		positions, err := uc.getPositionsBySymbol(ctx, tx, exchange, accountUID, symbol)
 		if err != nil {
-			return err
+			return apperror.ErrSetLeverage.Wrap(err)
 		}
 
 		for _, position := range positions {
 			position := position
+			if position.Amount != 0 {
+				return apperror.ErrSetLeverage.Wrap(apperror.ErrPositionExists)
+			}
+
 			position.Leverage = leverage
 
-			err = uc.savePosition(ctx, tx, position)
-			if err != nil {
-				return err
+			if err := uc.savePosition(ctx, tx, position); err != nil {
+				return apperror.ErrSetLeverage.Wrap(err)
 			}
 		}
 
@@ -142,7 +156,7 @@ func (uc *Usecase) getPositionBySide(ctx context.Context, tx pgx.Tx, order *enti
 	return position, nil
 }
 
-func (uc *Usecase) getPositionsBySymbol(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, exchange entities.Exchange, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error) {
+func (uc *Usecase) getPositionsBySymbol(ctx context.Context, tx pgx.Tx, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error) {
 	account, err := uc.getAccountByUID(ctx, nil, accountUID)
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("getPositionBySymbol:getAccountByUID [AccountUID: %s] error: %v", accountUID, err))
@@ -173,6 +187,20 @@ func (uc *Usecase) getPositionsBySymbol(ctx context.Context, tx pgx.Tx, accountU
 	}
 
 	return positions, nil
+}
+
+func (uc *Usecase) checkPresentOpenPosition(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) error {
+	positions, err := uc.position.SelectAccountOpenPositions(ctx, exchange, accountUID)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("checkPresentOpenPosition:SelectAccountOpenPositions [account_uid: %v] error: %v", accountUID, err))
+		return apperror.ErrRequestError
+	}
+
+	if len(positions) > 0 {
+		return apperror.ErrPositionExists
+	}
+
+	return nil
 }
 
 func (uc *Usecase) savePosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error {

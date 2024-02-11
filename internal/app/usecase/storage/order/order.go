@@ -100,7 +100,7 @@ func (s *Storage) SelectOrders(ctx context.Context, exchange entities.Exchange, 
 	return orders, err
 }
 
-func (s *Storage) SelectAllPendingOrders(ctx context.Context) ([]*entities.Order, error) {
+func (s *Storage) SelectPendingOrders(ctx context.Context) ([]*entities.Order, error) {
 	sql := `
 		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, status, create_ts, update_ts 
 		FROM "order" 
@@ -120,6 +120,37 @@ func (s *Storage) SelectAllPendingOrders(ctx context.Context) ([]*entities.Order
 		order  entities.Order
 		orders []*entities.Order
 	)
+
+	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Status, &order.CreateTS, &order.UpdateTS}, func() error {
+		order := order
+		orders = append(orders, &order)
+		return nil
+	})
+
+	return orders, err
+}
+
+func (s *Storage) SelectPendingOrdersBySymbol(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol *entities.Symbol) ([]*entities.Order, error) {
+	sql := `
+		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, status, create_ts, update_ts 
+		FROM "order" 
+		WHERE exchange = $1 AND account_uid = $2 
+			AND (symbol = $3 OR $3 IS NULL)
+			AND status = $4
+	`
+	var (
+		rows pgx.Rows
+		err  error
+	)
+
+	rows, err = s.repo.Query(ctx, sql, exchange, accountUID, symbol, entities.OrderStatusPending)
+	if err != nil {
+		return nil, err
+	}
+
+	var order entities.Order
+
+	orders := make([]*entities.Order, 0)
 
 	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Status, &order.CreateTS, &order.UpdateTS}, func() error {
 		order := order

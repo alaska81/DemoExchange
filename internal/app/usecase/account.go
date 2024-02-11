@@ -44,11 +44,25 @@ func (uc *Usecase) getAccountByUID(ctx context.Context, tx pgx.Tx, accountUID en
 }
 
 func (uc *Usecase) SetAccountPositionMode(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, positionMode entities.PositionMode) error {
-	account := entities.Account{
-		AccountUID:   accountUID,
-		PositionMode: positionMode,
-		UpdateTS:     entities.TS(),
-	}
+	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
+		if err := uc.checkPresentPendingOrders(ctx, exchange, accountUID, nil); err != nil {
+			return apperror.ErrSetPositionMode.Wrap(err)
+		}
 
-	return uc.account.UpdatePositionMode(ctx, &account)
+		if err := uc.checkPresentOpenPosition(ctx, exchange, accountUID); err != nil {
+			return apperror.ErrSetPositionMode.Wrap(err)
+		}
+
+		account := entities.Account{
+			AccountUID:   accountUID,
+			PositionMode: positionMode,
+			UpdateTS:     entities.TS(),
+		}
+
+		if err := uc.account.UpdatePositionMode(ctx, &account); err != nil {
+			return apperror.ErrSetPositionMode.Wrap(err)
+		}
+
+		return nil
+	})
 }

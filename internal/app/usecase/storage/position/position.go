@@ -35,9 +35,9 @@ func (s *Storage) InsertPosition(ctx context.Context, tx pgx.Tx, position *entit
 	var row pgx.Row
 
 	if tx != nil {
-		row = tx.QueryRow(ctx, sql, position.AccountUID, position.PositionUID, position.Exchange, position.Symbol, position.Mode, position.Type, position.Leverage, position.Side, position.Amount, position.Price, position.Margin, position.HoldAmount, position.CreateTS, position.UpdateTS)
+		row = tx.QueryRow(ctx, sql, position.AccountUID, position.PositionUID, position.Exchange, position.Symbol, position.Mode, position.MarginType, position.Leverage, position.Side, position.Amount, position.Price, position.Margin, position.HoldAmount, position.CreateTS, position.UpdateTS)
 	} else {
-		row = s.repo.QueryRow(ctx, sql, position.AccountUID, position.PositionUID, position.Exchange, position.Symbol, position.Mode, position.Type, position.Leverage, position.Side, position.Amount, position.Price, position.Margin, position.HoldAmount, position.CreateTS, position.UpdateTS)
+		row = s.repo.QueryRow(ctx, sql, position.AccountUID, position.PositionUID, position.Exchange, position.Symbol, position.Mode, position.MarginType, position.Leverage, position.Side, position.Amount, position.Price, position.Margin, position.HoldAmount, position.CreateTS, position.UpdateTS)
 	}
 
 	return row.Scan(&position.Amount, &position.Price, &position.HoldAmount)
@@ -51,9 +51,9 @@ func (s *Storage) UpdatePosition(ctx context.Context, tx pgx.Tx, position *entit
 	var err error
 
 	if tx != nil {
-		_, err = tx.Exec(ctx, sql, position.PositionUID, position.Amount, position.Price, position.Margin, position.HoldAmount, position.Type, position.Leverage, position.UpdateTS)
+		_, err = tx.Exec(ctx, sql, position.PositionUID, position.Amount, position.Price, position.Margin, position.HoldAmount, position.MarginType, position.Leverage, position.UpdateTS)
 	} else {
-		err = s.repo.Exec(ctx, sql, position.PositionUID, position.Amount, position.Price, position.Margin, position.HoldAmount, position.Type, position.Leverage, position.UpdateTS)
+		err = s.repo.Exec(ctx, sql, position.PositionUID, position.Amount, position.Price, position.Margin, position.HoldAmount, position.MarginType, position.Leverage, position.UpdateTS)
 	}
 
 	return err
@@ -76,7 +76,7 @@ func (s *Storage) SelectPositionBySide(ctx context.Context, tx pgx.Tx, accountUI
 		row = s.repo.QueryRow(ctx, sql, accountUID, symbol, side)
 	}
 
-	err := row.Scan(&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.Type, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS)
+	err := row.Scan(&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.MarginType, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, apperror.ErrPositionNotFound
@@ -113,7 +113,7 @@ func (s *Storage) SelectPositionsBySymbol(ctx context.Context, tx pgx.Tx, accoun
 
 	positions := make(map[entities.PositionSide]*entities.Position)
 
-	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.Type, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.MarginType, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
 		position := position
 		positions[position.Side] = &position
 		return nil
@@ -122,11 +122,11 @@ func (s *Storage) SelectPositionsBySymbol(ctx context.Context, tx pgx.Tx, accoun
 	return positions, err
 }
 
-func (s *Storage) SelectAccountPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error) {
+func (s *Storage) SelectAccountPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error) {
 	sql := `
 		SELECT account_uid, position_uid, exchange, symbol, position_mode, position_type, leverage, side, amount, price, margin, hold_amount, create_ts, update_ts 
 		FROM "position" 
-		WHERE account_uid = $1
+		WHERE exchange = $1 AND account_uid = $2
 		ORDER BY create_ts DESC
 	`
 	var (
@@ -134,7 +134,7 @@ func (s *Storage) SelectAccountPositions(ctx context.Context, accountUID entitie
 		err  error
 	)
 
-	rows, err = s.repo.Query(ctx, sql, accountUID)
+	rows, err = s.repo.Query(ctx, sql, exchange, accountUID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,36 @@ func (s *Storage) SelectAccountPositions(ctx context.Context, accountUID entitie
 
 	positions := make([]*entities.Position, 0)
 
-	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.Type, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.MarginType, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
+		position := position
+		positions = append(positions, &position)
+		return nil
+	})
+
+	return positions, err
+}
+
+func (s *Storage) SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error) {
+	sql := `
+		SELECT account_uid, position_uid, exchange, symbol, position_mode, position_type, leverage, side, amount, price, margin, hold_amount, create_ts, update_ts 
+		FROM "position" 
+		WHERE exchange = $1 AND account_uid = $2 AND (hold_amount > 0 OR amount > 0)
+	`
+	var (
+		rows pgx.Rows
+		err  error
+	)
+
+	rows, err = s.repo.Query(ctx, sql, exchange, accountUID)
+	if err != nil {
+		return nil, err
+	}
+
+	var position entities.Position
+
+	positions := make([]*entities.Position, 0)
+
+	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.MarginType, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
 		position := position
 		positions = append(positions, &position)
 		return nil
