@@ -44,10 +44,10 @@ type OrderStorage interface {
 
 type PositionStorage interface {
 	InsertPosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error
-	SelectPositionByUID(ctx context.Context, accountUID entities.AccountUID, positionUID string) (*entities.Position, error)
-	SelectOpenPositionBySymbolSide(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
 	UpdatePosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error
-	SelectOpenPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error)
+	SelectPositionBySide(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
+	SelectPositionsBySymbol(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
+	SelectAccountPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error)
 }
 
 type Storage interface {

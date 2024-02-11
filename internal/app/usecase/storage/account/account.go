@@ -27,15 +27,15 @@ func New(repo Repository) *Storage {
 
 func (s *Storage) InsertAccount(ctx context.Context, tx pgx.Tx, account *entities.Account) error {
 	sql := `
-		INSERT INTO account (account_uid, service, user_id, position_mode, position_type, create_ts, update_ts) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO account (account_uid, service, user_id, position_mode, create_ts, update_ts) VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	var err error
 
 	if tx != nil {
-		_, err = tx.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.PositionType, account.CreateTS, account.UpdateTS)
+		_, err = tx.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.CreateTS, account.UpdateTS)
 	} else {
-		err = s.repo.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.PositionType, account.CreateTS, account.UpdateTS)
+		err = s.repo.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.CreateTS, account.UpdateTS)
 	}
 
 	return err
@@ -51,12 +51,12 @@ func (s *Storage) SelectAccount(ctx context.Context, tx pgx.Tx, service, userID 
 	var account entities.Account
 
 	sql := `
-		SELECT account_uid, service, user_id, position_mode, position_type, create_ts, update_ts FROM account WHERE service = $1 AND user_id = $2
+		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE service = $1 AND user_id = $2
 	`
 
 	row := s.repo.QueryRow(ctx, sql, service, userID)
 
-	err := row.Scan(&account.AccountUID, &account.Service, &account.UserID, &account.PositionMode, &account.PositionType, &account.CreateTS, &account.UpdateTS)
+	err := row.Scan(&account.AccountUID, &account.Service, &account.UserID, &account.PositionMode, &account.CreateTS, &account.UpdateTS)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, apperror.ErrAccountNotFound
@@ -71,12 +71,12 @@ func (s *Storage) SelectAccountByUID(ctx context.Context, tx pgx.Tx, accountUID 
 	var account entities.Account
 
 	sql := `
-		SELECT account_uid, service, user_id, position_mode, position_type, create_ts, update_ts FROM account WHERE account_uid = $1
+		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE account_uid = $1
 	`
 
 	row := s.repo.QueryRow(ctx, sql, accountUID)
 
-	err := row.Scan(&account.AccountUID, &account.Service, &account.UserID, &account.PositionMode, &account.PositionType, &account.CreateTS, &account.UpdateTS)
+	err := row.Scan(&account.AccountUID, &account.Service, &account.UserID, &account.PositionMode, &account.CreateTS, &account.UpdateTS)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, apperror.ErrAccountNotFound

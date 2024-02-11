@@ -46,15 +46,18 @@ type OrderRequest struct {
 }
 
 type PositionModeRequest struct {
-	Mode string `json:"mode"`
+	Exchange string `json:"exchange"`
+	Mode     string `json:"mode"`
 }
 
 type PositionTypeRequest struct {
-	Symbol string `json:"symbol"`
-	Type   string `json:"type"`
+	Exchange string `json:"exchange"`
+	Symbol   string `json:"symbol"`
+	Type     string `json:"type"`
 }
 
 type PositionLeverageRequest struct {
+	Exchange string `json:"exchange"`
 	Symbol   string `json:"symbol"`
 	Leverage int32  `json:"leverage"`
 }

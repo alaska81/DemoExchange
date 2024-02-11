@@ -11,9 +11,9 @@ import (
 )
 
 func (uc *Usecase) holdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesOneway:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("holdBalanceFuturesOneway:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -122,9 +122,9 @@ func (uc *Usecase) unholdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, or
 		return err
 	}
 
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("unholdBalanceFuturesOneway:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("unholdBalanceFuturesOneway:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -156,9 +156,9 @@ func (uc *Usecase) appendBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, or
 
 	coin := coins.CoinBase
 
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceFuturesOneway:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("appendBalanceFuturesOneway:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -176,10 +176,6 @@ func (uc *Usecase) appendBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, or
 		position.Amount += order.Amount
 	} else {
 		position.Amount -= order.Amount
-	}
-
-	if position.Amount == 0 {
-		position.Status = entities.PositionStatusClose
 	}
 
 	if order.Amount > unhold {

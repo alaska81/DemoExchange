@@ -50,7 +50,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 			return err
 		}
 
-		if account.Method == entities.AccountMethodNew {
+		if account.IsNew {
 			for _, exchange := range exchanges {
 				balance := initialBalance[exchange]
 

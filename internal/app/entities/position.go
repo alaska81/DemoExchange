@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	DefaultLeverage PositionLeverage = 10
+	DefaultPositionType PositionType     = "isolated"
+	DefaultLeverage     PositionLeverage = 10
 )
 
 type Position struct {
@@ -20,7 +21,6 @@ type Position struct {
 	Amount      float64          `json:"amount" db:"amount"`
 	Price       float64          `json:"price" db:"price"`
 	MarkPrice   float64          `json:"mark_price" db:"-"`
-	Status      PositionStatus   `json:"-" db:"status"`
 	CreateTS    int64            `json:"create_ts" db:"create_ts"`
 	UpdateTS    int64            `json:"update_ts" db:"update_ts"`
 	IsNew       bool             `json:"-" db:"-"`
@@ -51,22 +51,29 @@ const (
 	PositionSideBoth  PositionSide = "both"
 )
 
-type PositionStatus string
+var sides = map[PositionMode][]PositionSide{
+	PositionModeOneway: {PositionSideBoth},
+	PositionModeHedge:  {PositionSideLong, PositionSideShort},
+}
 
-const (
-	PositionStatusOpen  PositionStatus = "open"
-	PositionStatusClose PositionStatus = "close"
-)
+func (m PositionMode) GetSides() []PositionSide {
+	return sides[m]
+}
 
 func NewPosition(account *Account, exchange Exchange, symbol Symbol, positionSide PositionSide) *Position {
+	ts := TS()
+
 	return &Position{
 		PositionUID: uuid.New().String(),
 		AccountUID:  account.AccountUID,
 		Exchange:    exchange,
 		Symbol:      symbol,
 		Mode:        account.PositionMode,
-		Type:        account.PositionType,
+		Type:        DefaultPositionType,
 		Leverage:    DefaultLeverage,
 		Side:        positionSide,
+		CreateTS:    ts,
+		UpdateTS:    ts,
+		IsNew:       true,
 	}
 }

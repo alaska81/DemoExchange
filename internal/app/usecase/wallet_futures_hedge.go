@@ -60,9 +60,9 @@ func (uc *Usecase) holdBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx, o
 }
 
 func (uc *Usecase) holdBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesHedgeClose:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("holdBalanceFuturesHedgeClose:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -147,9 +147,9 @@ func (uc *Usecase) unholdBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx,
 }
 
 func (uc *Usecase) unholdBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("unholdBalanceFuturesHedgeClose:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("unholdBalanceFuturesHedgeClose:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -224,9 +224,9 @@ func (uc *Usecase) appendBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx,
 		return err
 	}
 
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeOpen:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeOpen:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -258,9 +258,9 @@ func (uc *Usecase) appendBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx
 
 	coin := coins.CoinBase
 
-	position, err := uc.getOpenPosition(ctx, tx, order)
+	position, err := uc.getPositionBySide(ctx, tx, order)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeClose:getOpenPosition [%+v] error: %v", order, err))
+		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeClose:getPositionBySide [%+v] error: %v", order, err))
 		return err
 	}
 
@@ -273,10 +273,6 @@ func (uc *Usecase) appendBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx
 	if position.Amount < 0 {
 		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeClose:ErrInsufficientFunds [AccountUID: %s, position_amount: %v, order_amount: %v]", order.AccountUID, position.Amount, order.Amount))
 		return apperror.ErrInsufficientFunds
-	}
-
-	if position.Amount == 0 {
-		position.Status = entities.PositionStatusClose
 	}
 
 	position.UpdateTS = order.UpdateTS

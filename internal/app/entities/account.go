@@ -8,18 +8,16 @@ import (
 
 const (
 	DefaultPositionMode = PositionModeOneway
-	DefaultPositionType = PositionTypeIsolated
 )
 
 type Account struct {
-	AccountUID   AccountUID    `json:"account_uid" db:"account_uid"`
-	Service      string        `json:"service" db:"service"`
-	UserID       string        `json:"user_id" db:"user_id"`
-	PositionMode PositionMode  `json:"position_mode" db:"position_mode"`
-	PositionType PositionType  `json:"position_type" db:"position_type"`
-	CreateTS     int64         `json:"create_ts" db:"create_ts"`
-	UpdateTS     int64         `json:"update_ts" db:"update_ts"`
-	Method       AccountMethod `json:"-" db:"-"`
+	AccountUID   AccountUID   `json:"account_uid" db:"account_uid"`
+	Service      string       `json:"service" db:"service"`
+	UserID       string       `json:"user_id" db:"user_id"`
+	PositionMode PositionMode `json:"position_mode" db:"position_mode"`
+	CreateTS     int64        `json:"create_ts" db:"create_ts"`
+	UpdateTS     int64        `json:"update_ts" db:"update_ts"`
+	IsNew        bool         `json:"-" db:"-"`
 }
 
 type AccountUID string
@@ -32,7 +30,6 @@ func NewAccount(service, userID string) *Account {
 		Service:      service,
 		UserID:       userID,
 		PositionMode: DefaultPositionMode,
-		PositionType: DefaultPositionType,
 		CreateTS:     ts,
 		UpdateTS:     ts,
 	}
@@ -41,10 +38,3 @@ func NewAccount(service, userID string) *Account {
 func TS() int64 {
 	return time.Now().UTC().UnixMilli()
 }
-
-type AccountMethod string
-
-const (
-	AccountMethodNew AccountMethod = "new"
-	AccountMethodGet AccountMethod = "get"
-)

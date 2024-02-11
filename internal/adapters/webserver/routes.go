@@ -501,10 +501,6 @@ func (r *Routes) getOrderListHandler(c *gin.Context) {
 }
 
 func (r *Routes) getPositionListHandler(c *gin.Context) {
-	exchange := c.Query("exchange")
-
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -514,6 +510,10 @@ func (r *Routes) getPositionListHandler(c *gin.Context) {
 		})
 		return
 	}
+
+	exchange := c.Query("exchange")
+
+	ctx := c.Request.Context()
 
 	result, err := r.usecase.PositionsList(ctx, entities.Exchange(exchange), accountUID.(entities.AccountUID))
 	if err != nil {
@@ -554,7 +554,7 @@ func (r *Routes) postPositionModeHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetAccountPositionMode(ctx, accountUID.(entities.AccountUID), entities.PositionMode(req.Mode))
+	err := r.usecase.SetAccountPositionMode(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.PositionMode(req.Mode))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -592,7 +592,7 @@ func (r *Routes) postPositionTypeHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetPositionType(ctx, accountUID.(entities.AccountUID), entities.PositionType(req.Type))
+	err := r.usecase.SetPositionType(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.PositionType(req.Type))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -630,7 +630,7 @@ func (r *Routes) postPositionLeverageHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetPositionLeverage(ctx, accountUID.(entities.AccountUID), entities.PositionLeverage(req.Leverage))
+	err := r.usecase.SetPositionLeverage(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.PositionLeverage(req.Leverage))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

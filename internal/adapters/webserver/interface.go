@@ -22,7 +22,7 @@ type Orderbook interface {
 }
 
 type Usecase interface {
-	SetAccountPositionMode(ctx context.Context, accountUID entities.AccountUID, positionMode entities.PositionMode) error
+	SetAccountPositionMode(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, positionMode entities.PositionMode) error
 
 	CreateToken(ctx context.Context, service, userID string) (entities.Token, error)
 	DisableToken(ctx context.Context, token entities.Token) error
@@ -38,8 +38,8 @@ type Usecase interface {
 	OrdersList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, statuses []entities.OrderStatus, limit int) ([]*entities.Order, error)
 
 	PositionsList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
-	SetPositionType(ctx context.Context, accountUID entities.AccountUID, positionType entities.PositionType) error
-	SetPositionLeverage(ctx context.Context, accountUID entities.AccountUID, leverage entities.PositionLeverage) error
+	SetPositionType(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, positionType entities.PositionType) error
+	SetPositionLeverage(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, leverage entities.PositionLeverage) error
 }
 
 type Logger interface {

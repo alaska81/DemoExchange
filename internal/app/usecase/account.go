@@ -30,13 +30,12 @@ func (uc *Usecase) getAccount(ctx context.Context, tx pgx.Tx, service, userID st
 				return nil, err
 			}
 
-			account.Method = entities.AccountMethodNew
+			account.IsNew = true
 			return account, nil
 		}
 		return nil, err
 	}
 
-	account.Method = entities.AccountMethodGet
 	return account, nil
 }
 
@@ -44,7 +43,7 @@ func (uc *Usecase) getAccountByUID(ctx context.Context, tx pgx.Tx, accountUID en
 	return uc.account.SelectAccountByUID(ctx, tx, accountUID)
 }
 
-func (uc *Usecase) SetAccountPositionMode(ctx context.Context, accountUID entities.AccountUID, positionMode entities.PositionMode) error {
+func (uc *Usecase) SetAccountPositionMode(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, positionMode entities.PositionMode) error {
 	account := entities.Account{
 		AccountUID:   accountUID,
 		PositionMode: positionMode,

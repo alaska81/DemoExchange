@@ -180,6 +180,7 @@ content-type: application/json
 token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 {
+    "exchange": "demo_futures",
     "mode": "oneway"
 }
 
@@ -189,5 +190,54 @@ content-type: application/json
 token: db936be21e11e5df735b20a802a0a250266dc6e7
 
 {
+    "exchange": "demo_futures",
     "mode": "hedge"
+}
+
+
+
+### 
+POST http://localhost:44444/v1/position/type HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "type": "isolated"
+}
+
+### 
+POST https://demo-exchange.cryptorobotics.net/v1/position/type HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "type": "cross"
+}
+
+
+
+### 
+POST http://localhost:44444/v1/position/leverage HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "leverage": 5
+}
+
+### 
+POST https://demo-exchange.cryptorobotics.net/v1/position/leverage HTTP/1.1
+content-type: application/json
+token: db936be21e11e5df735b20a802a0a250266dc6e7
+
+{
+    "exchange": "demo_futures",
+    "symbol": "BTC/USDT",
+    "leverage": 5
 }
