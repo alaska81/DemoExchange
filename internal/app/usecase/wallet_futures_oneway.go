@@ -43,12 +43,7 @@ func (uc *Usecase) holdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, orde
 
 	hold := (order.Amount - holdPosition) * order.Price
 	if hold > 0 {
-		coins, err := order.Symbol.GetCoins()
-		if err != nil {
-			uc.log.Error(fmt.Sprintf("holdBalanceFuturesOneway:GetCoins [%+v] error: %v", order, err))
-			return err
-		}
-
+		coins := order.Symbol.GetCoins()
 		coin := coins.CoinBase
 
 		balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -83,12 +78,7 @@ func (uc *Usecase) holdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, orde
 }
 
 func (uc *Usecase) unholdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesOneway:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -149,12 +139,7 @@ func (uc *Usecase) unholdBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, or
 }
 
 func (uc *Usecase) appendBalanceFuturesOneway(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesOneway:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	position, err := uc.getPositionBySide(ctx, tx, order)

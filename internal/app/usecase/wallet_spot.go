@@ -24,11 +24,7 @@ func (uc *Usecase) holdBalanceSpot(ctx context.Context, order *entities.Order) e
 }
 
 func (uc *Usecase) holdBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -64,11 +60,7 @@ func (uc *Usecase) holdBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *ent
 }
 
 func (uc *Usecase) holdBalanceSpotSell(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinQuote
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -116,11 +108,7 @@ func (uc *Usecase) unholdBalanceSpot(ctx context.Context, order *entities.Order)
 }
 
 func (uc *Usecase) unholdBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -160,11 +148,7 @@ func (uc *Usecase) unholdBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *e
 }
 
 func (uc *Usecase) unholdBalanceSpotSell(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinQuote
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -216,12 +200,7 @@ func (uc *Usecase) appendBalanceSpot(ctx context.Context, order *entities.Order)
 }
 
 func (uc *Usecase) appendBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceSpotBuy:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -277,12 +256,7 @@ func (uc *Usecase) appendBalanceSpotBuy(ctx context.Context, tx pgx.Tx, order *e
 }
 
 func (uc *Usecase) appendBalanceSpotSell(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceSpotSell:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinQuote
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)

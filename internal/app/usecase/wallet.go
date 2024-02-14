@@ -21,7 +21,40 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 		Exchange:   exchange,
 		AccountUID: accountUID,
 	}
-	return uc.wallet.SelectBalances(ctx, nil, wallet)
+	balances, err := uc.wallet.SelectBalances(ctx, nil, wallet)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("GetBalances:SelectBalances [%+v] error: %v", wallet, err))
+		return nil, err
+	}
+
+	if exchange == entities.ExchangeSpot {
+		return balances, nil
+	}
+
+	for coin, balance := range balances {
+		free := balance.Total - balance.Hold
+		balance.AvailableBalance = free
+		balance.WalletBalance = free
+		balances[coin] = balance
+	}
+
+	positions, err := uc.PositionsList(ctx, exchange, accountUID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range positions {
+		coins := p.Symbol.GetCoins()
+
+		if balance, ok := balances[coins.CoinBase]; ok {
+			balance.WalletBalance += p.Margin
+			balance.MarginBalance += p.MarginBalance
+			balance.UnrealisedPnl += p.UnrealisedPnl
+			balances[coins.CoinBase] = balance
+		}
+	}
+
+	return balances, nil
 }
 
 func (uc *Usecase) Deposit(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin, amount float64) (float64, error) {

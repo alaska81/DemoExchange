@@ -7,17 +7,19 @@ type Wallet struct {
 	UpdateTS   int64      `json:"update_ts" db:"update_ts"`
 }
 
+type Coin string
+
 type Balance struct {
 	Coin  Coin    `json:"coin" db:"coin"`
 	Total float64 `json:"total" db:"total"`
 	Hold  float64 `json:"hold" db:"hold"`
 
-	WalletBalance float64 `json:"wallet_balance" db:"wallet_balance"`
-	MarginBalance float64 `json:"margin_balance" db:"margin_balance"`
-	InitialMargin float64 `json:"initial_margin" db:"initial_margin"`
-	MaintMargin   float64 `json:"maint_margin" db:"maint_margin"`
+	AvailableBalance float64 `json:"available_balance" db:"-"`
+	WalletBalance    float64 `json:"wallet_balance" db:"-"`
+	MarginBalance    float64 `json:"margin_balance" db:"-"`
+	InitialMargin    float64 `json:"initial_margin" db:"-"`
+	MaintMargin      float64 `json:"maint_margin" db:"-"`
+	UnrealisedPnl    float64 `json:"unrealised_pnl" db:"-"`
 }
-
-type Coin string
 
 type Balances map[Coin]Balance

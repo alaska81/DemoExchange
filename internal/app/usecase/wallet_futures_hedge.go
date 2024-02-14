@@ -11,7 +11,7 @@ import (
 )
 
 func (uc *Usecase) holdBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	if order.Side == entities.OrderSideBuy {
+	if (order.PositionSide == entities.PositionSideLong && order.Side == entities.OrderSideBuy) || (order.PositionSide == entities.PositionSideShort && order.Side == entities.OrderSideSell) {
 		return uc.holdBalanceFuturesHedgeOpen(ctx, tx, order)
 	} else {
 		return uc.holdBalanceFuturesHedgeClose(ctx, tx, order)
@@ -19,12 +19,7 @@ func (uc *Usecase) holdBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, order
 }
 
 func (uc *Usecase) holdBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesHedgeOpen:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -95,7 +90,7 @@ func (uc *Usecase) holdBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx, 
 }
 
 func (uc *Usecase) unholdBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	if order.Side == entities.OrderSideBuy {
+	if (order.PositionSide == entities.PositionSideLong && order.Side == entities.OrderSideBuy) || (order.PositionSide == entities.PositionSideShort && order.Side == entities.OrderSideSell) {
 		return uc.unholdBalanceFuturesHedgeOpen(ctx, tx, order)
 	} else {
 		return uc.unholdBalanceFuturesHedgeClose(ctx, tx, order)
@@ -103,12 +98,7 @@ func (uc *Usecase) unholdBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, ord
 }
 
 func (uc *Usecase) unholdBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("holdBalanceFuturesHedgeOpen:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -168,7 +158,7 @@ func (uc *Usecase) unholdBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx
 }
 
 func (uc *Usecase) appendBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	if order.Side == entities.OrderSideBuy {
+	if (order.PositionSide == entities.PositionSideLong && order.Side == entities.OrderSideBuy) || (order.PositionSide == entities.PositionSideShort && order.Side == entities.OrderSideSell) {
 		return uc.appendBalanceFuturesHedgeOpen(ctx, tx, order)
 	} else {
 		return uc.appendBalanceFuturesHedgeClose(ctx, tx, order)
@@ -176,12 +166,7 @@ func (uc *Usecase) appendBalanceFuturesHedge(ctx context.Context, tx pgx.Tx, ord
 }
 
 func (uc *Usecase) appendBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeOpen:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	balanceTotal, balanceHold, err := uc.getBalanceCoin(ctx, tx, order.Exchange, order.AccountUID, coin)
@@ -251,12 +236,7 @@ func (uc *Usecase) appendBalanceFuturesHedgeOpen(ctx context.Context, tx pgx.Tx,
 }
 
 func (uc *Usecase) appendBalanceFuturesHedgeClose(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
-	coins, err := order.Symbol.GetCoins()
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("appendBalanceFuturesHedgeOpen:GetCoins [%+v] error: %v", order, err))
-		return err
-	}
-
+	coins := order.Symbol.GetCoins()
 	coin := coins.CoinBase
 
 	position, err := uc.getPositionBySide(ctx, tx, order)

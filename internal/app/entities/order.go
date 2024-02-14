@@ -1,14 +1,10 @@
 package entities
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/google/uuid"
 )
-
-//lint:ignore ST1005 strings capitalized
-var ErrInvalidSymbol = errors.New("Invalid symbol")
 
 type Order struct {
 	AccountUID   AccountUID   `json:"account_uid" db:"account_uid"`
@@ -40,12 +36,12 @@ type Coins struct {
 	CoinBase  Coin
 }
 
-func (s Symbol) GetCoins() (Coins, error) {
+func (s Symbol) GetCoins() Coins {
 	coins := strings.Split(string(s), "/")
 	if len(coins) != 2 {
-		return Coins{}, ErrInvalidSymbol
+		return Coins{}
 	}
-	return Coins{Coin(coins[0]), Coin(coins[1])}, nil
+	return Coins{Coin(coins[0]), Coin(coins[1])}
 }
 
 type OrderStatus string

@@ -58,21 +58,27 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 			if !ok {
 				position = entities.NewPosition(account, exchange, symbol, entities.PositionSideBoth)
 			}
+
 			position.MarkPrice = ticker.Last
+			position.Calc()
 			result = append(result, position)
 		} else {
 			positionLong, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideLong}]
 			if !ok {
 				positionLong = entities.NewPosition(account, exchange, symbol, entities.PositionSideLong)
 			}
+
 			positionLong.MarkPrice = ticker.Last
+			positionLong.Calc()
 			result = append(result, positionLong)
 
 			positionShort, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideShort}]
 			if !ok {
 				positionShort = entities.NewPosition(account, exchange, symbol, entities.PositionSideShort)
 			}
+
 			positionShort.MarkPrice = ticker.Last
+			positionShort.Calc()
 			result = append(result, positionShort)
 		}
 	}
