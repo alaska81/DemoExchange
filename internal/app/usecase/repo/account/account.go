@@ -10,6 +10,7 @@ import (
 )
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) error
@@ -25,20 +26,16 @@ func New(repo Repository) *Storage {
 	}
 }
 
-func (s *Storage) InsertAccount(ctx context.Context, tx pgx.Tx, account *entities.Account) error {
+func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return s.repo.WithTx(ctx, fn)
+}
+
+func (s *Storage) InsertAccount(ctx context.Context, account *entities.Account) error {
 	sql := `
 		INSERT INTO account (account_uid, service, user_id, position_mode, create_ts, update_ts) VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	var err error
-
-	if tx != nil {
-		_, err = tx.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.CreateTS, account.UpdateTS)
-	} else {
-		err = s.repo.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.CreateTS, account.UpdateTS)
-	}
-
-	return err
+	return s.repo.Exec(ctx, sql, account.AccountUID, account.Service, account.UserID, account.PositionMode, account.CreateTS, account.UpdateTS)
 }
 
 func (s *Storage) UpdatePositionMode(ctx context.Context, account *entities.Account) error {
@@ -47,7 +44,7 @@ func (s *Storage) UpdatePositionMode(ctx context.Context, account *entities.Acco
 	return s.repo.Exec(ctx, sql, account.AccountUID, account.PositionMode, account.UpdateTS)
 }
 
-func (s *Storage) SelectAccount(ctx context.Context, tx pgx.Tx, service, userID string) (*entities.Account, error) {
+func (s *Storage) SelectAccount(ctx context.Context, service, userID string) (*entities.Account, error) {
 	var account entities.Account
 
 	sql := `
@@ -67,7 +64,7 @@ func (s *Storage) SelectAccount(ctx context.Context, tx pgx.Tx, service, userID 
 	return &account, nil
 }
 
-func (s *Storage) SelectAccountByUID(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID) (*entities.Account, error) {
+func (s *Storage) SelectAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error) {
 	var account entities.Account
 
 	sql := `

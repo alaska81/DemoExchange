@@ -1,4 +1,4 @@
-package storage
+package cache
 
 import (
 	"fmt"
@@ -7,19 +7,19 @@ import (
 	"DemoExchange/internal/app/entities"
 )
 
-type Storage struct {
+type Cache struct {
 	orders map[string]*entities.Order
 	mu     sync.RWMutex
 }
 
-func New() *Storage {
-	return &Storage{
+func New() *Cache {
+	return &Cache{
 		orders: make(map[string]*entities.Order),
 		mu:     sync.RWMutex{},
 	}
 }
 
-func (s *Storage) Set(order *entities.Order) {
+func (s *Cache) Set(order *entities.Order) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -27,7 +27,7 @@ func (s *Storage) Set(order *entities.Order) {
 	fmt.Println("Add: ", order.OrderUID)
 }
 
-func (s *Storage) Get(orderUID string) (*entities.Order, bool) {
+func (s *Cache) Get(orderUID string) (*entities.Order, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -37,7 +37,7 @@ func (s *Storage) Get(orderUID string) (*entities.Order, bool) {
 	return order, ok
 }
 
-func (s *Storage) Delete(orderUID string) {
+func (s *Cache) Delete(orderUID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (s *Storage) Delete(orderUID string) {
 	fmt.Println("Delete: ", orderUID)
 }
 
-func (s *Storage) List() []*entities.Order {
+func (s *Cache) List() []*entities.Order {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

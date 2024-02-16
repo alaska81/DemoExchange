@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jackc/pgx/v5"
-
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
 )
@@ -21,7 +19,7 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 		Exchange:   exchange,
 		AccountUID: accountUID,
 	}
-	balances, err := uc.wallet.SelectBalances(ctx, nil, wallet)
+	balances, err := uc.wallet.SelectBalances(ctx, wallet)
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("GetBalances:SelectBalances [%+v] error: %v", wallet, err))
 		return nil, err
@@ -65,12 +63,12 @@ func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, a
 	muWallet.Lock()
 	defer muWallet.Unlock()
 
-	err := uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
+	err := uc.wallet.WithTx(ctx, func(ctx context.Context) error {
 		wallet := entities.Wallet{
 			Exchange:   exchange,
 			AccountUID: accountUID,
 		}
-		balances, err := uc.wallet.SelectBalances(ctx, tx, wallet)
+		balances, err := uc.wallet.SelectBalances(ctx, wallet)
 		if err != nil {
 			return err
 		}
@@ -87,7 +85,7 @@ func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, a
 		wallet.Balance.Total = amount
 		wallet.UpdateTS = entities.TS()
 
-		return uc.wallet.AppendTotalCoin(ctx, tx, wallet)
+		return uc.wallet.AppendTotalCoin(ctx, wallet)
 	})
 
 	return amount, err
@@ -101,12 +99,12 @@ func (uc *Usecase) SubtractCoin(ctx context.Context, exchange entities.Exchange,
 	muWallet.Lock()
 	defer muWallet.Unlock()
 
-	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
+	return uc.wallet.WithTx(ctx, func(ctx context.Context) error {
 		wallet := entities.Wallet{
 			Exchange:   exchange,
 			AccountUID: accountUID,
 		}
-		balances, err := uc.wallet.SelectBalances(ctx, tx, wallet)
+		balances, err := uc.wallet.SelectBalances(ctx, wallet)
 		if err != nil {
 			return err
 		}
@@ -119,20 +117,20 @@ func (uc *Usecase) SubtractCoin(ctx context.Context, exchange entities.Exchange,
 		wallet.Balance.Total = amount
 		wallet.UpdateTS = entities.TS()
 
-		return uc.wallet.SubtractTotalCoin(ctx, tx, wallet)
+		return uc.wallet.SubtractTotalCoin(ctx, wallet)
 	})
 }
 
-func (uc *Usecase) getBalanceCoin(ctx context.Context, tx pgx.Tx, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin) (total float64, hold float64, err error) {
+func (uc *Usecase) GetBalanceCoin(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin) (total float64, hold float64, err error) {
 	var balances entities.Balances
 
 	wallet := entities.Wallet{
 		Exchange:   exchange,
 		AccountUID: accountUID,
 	}
-	balances, err = uc.wallet.SelectBalances(ctx, tx, wallet)
+	balances, err = uc.wallet.SelectBalances(ctx, wallet)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("getBalanceCoin:SelectBalances [%+v] error: %v", wallet, err))
+		uc.log.Error(fmt.Sprintf("GetBalanceCoin:SelectBalances [%+v] error: %v", wallet, err))
 		return
 	}
 
@@ -142,29 +140,77 @@ func (uc *Usecase) getBalanceCoin(ctx context.Context, tx pgx.Tx, exchange entit
 	return
 }
 
-func (uc *Usecase) holdBalance(ctx context.Context, order *entities.Order) error {
-	if order.Exchange == entities.ExchangeSpot {
-		return uc.holdBalanceSpot(ctx, order)
-	} else {
-		return uc.holdBalanceFutures(ctx, order)
+func (uc *Usecase) SetHoldBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
+	wallet := entities.Wallet{
+		Exchange:   exchange,
+		AccountUID: accountUID,
+		Balance:    balance,
+		UpdateTS:   entities.TS(),
 	}
+	err := uc.wallet.SetHoldCoin(ctx, wallet)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("SetHoldBalance:SetHoldCoin [%+v] error: %v", wallet, err))
+		return err
+	}
+
+	return nil
 }
 
-func (uc *Usecase) unholdBalance(ctx context.Context, order *entities.Order) error {
-	if order.Exchange == entities.ExchangeSpot {
-		return uc.unholdBalanceSpot(ctx, order)
-	} else {
-		return uc.unholdBalanceFutures(ctx, order)
+func (uc *Usecase) SubtractBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
+	wallet := entities.Wallet{
+		Exchange:   exchange,
+		AccountUID: accountUID,
+		Balance:    balance,
+		UpdateTS:   entities.TS(),
 	}
+	err := uc.wallet.SubtractTotalCoin(ctx, wallet)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("SubtractBalance:SubtractTotalCoin [%+v] error: %v", wallet, err))
+		return err
+	}
+
+	return nil
 }
 
-func (uc *Usecase) appendBalance(ctx context.Context, order *entities.Order) error {
-	if order.Exchange == entities.ExchangeSpot {
-		return uc.appendBalanceSpot(ctx, order)
-	} else {
-		return uc.appendBalanceFutures(ctx, order)
+func (uc *Usecase) AppendBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
+	wallet := entities.Wallet{
+		Exchange:   exchange,
+		AccountUID: accountUID,
+		Balance:    balance,
+		UpdateTS:   entities.TS(),
 	}
+	err := uc.wallet.AppendTotalCoin(ctx, wallet)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("AppendBalance:AppendTotalCoin [%+v] error: %v", wallet, err))
+		return err
+	}
+
+	return nil
 }
+
+// func (uc *Usecase) holdBalance(ctx context.Context, order *entities.Order) error {
+// 	if order.Exchange == entities.ExchangeSpot {
+// 		return uc.holdBalanceSpot(ctx, order)
+// 	} else {
+// 		return uc.holdBalanceFutures(ctx, order)
+// 	}
+// }
+
+// func (uc *Usecase) unholdBalance(ctx context.Context, order *entities.Order) error {
+// 	if order.Exchange == entities.ExchangeSpot {
+// 		return uc.unholdBalanceSpot(ctx, order)
+// 	} else {
+// 		return uc.unholdBalanceFutures(ctx, order)
+// 	}
+// }
+
+// func (uc *Usecase) appendBalance(ctx context.Context, order *entities.Order) error {
+// 	if order.Exchange == entities.ExchangeSpot {
+// 		return uc.appendBalanceSpot(ctx, order)
+// 	} else {
+// 		return uc.appendBalanceFutures(ctx, order)
+// 	}
+// }
 
 func (uc *Usecase) getBalanceLimit(coin entities.Coin) float64 {
 	return uc.cfg.MaxBalances[coin]

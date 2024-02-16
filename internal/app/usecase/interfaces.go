@@ -3,38 +3,36 @@ package usecase
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
-
 	"DemoExchange/internal/app/entities"
-	"DemoExchange/internal/app/usecase/trade"
+	"DemoExchange/internal/app/usecase/orders"
 )
 
-type Tx interface {
-	WithTX(ctx context.Context, fn func(tx pgx.Tx) error) error
-}
-
 type AccountStorage interface {
-	InsertAccount(ctx context.Context, tx pgx.Tx, account *entities.Account) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	InsertAccount(ctx context.Context, account *entities.Account) error
 	UpdatePositionMode(ctx context.Context, account *entities.Account) error
-	SelectAccount(ctx context.Context, tx pgx.Tx, service, userID string) (*entities.Account, error)
-	SelectAccountByUID(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID) (*entities.Account, error)
+	SelectAccount(ctx context.Context, service, userID string) (*entities.Account, error)
+	SelectAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error)
 }
 
 type APIKeyStorage interface {
-	InsertAccountKey(ctx context.Context, tx pgx.Tx, key *entities.Key) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	InsertAccountKey(ctx context.Context, key *entities.Key) error
 	UpdateAccountKey(ctx context.Context, key *entities.Key) error
-	SelectAccountKeys(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID) ([]entities.Key, error)
+	SelectAccountKeys(ctx context.Context, accountUID entities.AccountUID) ([]entities.Key, error)
 	SelectAccountUID(ctx context.Context, token entities.Token) (entities.AccountUID, error)
 }
 
 type WalletStorage interface {
-	SelectBalances(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) (entities.Balances, error)
-	AppendTotalCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error
-	SubtractTotalCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error
-	SetHoldCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	SelectBalances(ctx context.Context, wallet entities.Wallet) (entities.Balances, error)
+	AppendTotalCoin(ctx context.Context, wallet entities.Wallet) error
+	SubtractTotalCoin(ctx context.Context, wallet entities.Wallet) error
+	SetHoldCoin(ctx context.Context, wallet entities.Wallet) error
 }
 
 type OrderStorage interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	InsertOrder(ctx context.Context, order *entities.Order) error
 	SelectOrder(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, orderUID string) (*entities.Order, error)
 	UpdateOrder(ctx context.Context, order *entities.Order) error
@@ -44,24 +42,18 @@ type OrderStorage interface {
 }
 
 type PositionStorage interface {
-	InsertPosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error
-	UpdatePosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error
-	SelectPositionBySide(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
-	SelectPositionsBySymbol(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	InsertPosition(ctx context.Context, position *entities.Position) error
+	UpdatePosition(ctx context.Context, position *entities.Position) error
+	SelectPositionBySide(ctx context.Context, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
+	SelectPositionsBySymbol(ctx context.Context, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
 	SelectAccountPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
 	SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
 }
 
-type Storage interface {
-	APIKeyStorage
-	WalletStorage
-	OrderStorage
-}
-
-type Trade interface {
-	Create(order *entities.Order) (trade.Trader, error)
+type Cache interface {
 	Set(order *entities.Order)
-	Get(orderUID string) (*entities.Order, error)
+	Get(orderUID string) (*entities.Order, bool)
 	Delete(orderUID string)
 	List() []*entities.Order
 }
@@ -69,4 +61,13 @@ type Trade interface {
 type Logger interface {
 	Info(args ...interface{})
 	Error(args ...interface{})
+}
+
+type Order interface {
+	GetOrder() *entities.Order
+	Validate() error
+	Process(ctx context.Context) (<-chan entities.OrderStatus, error)
+	HoldBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
+	UnholdBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
+	AppendBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
 }

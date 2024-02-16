@@ -61,18 +61,46 @@ func (c *Connection) Close() {
 }
 
 func (c *Connection) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	tx := extractTx(ctx)
+	if tx != nil {
+		return tx.Query(ctx, sql, args...)
+	}
 	return c.pool.Query(ctx, sql, args...)
 }
 
 func (c *Connection) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	tx := extractTx(ctx)
+	if tx != nil {
+		return tx.QueryRow(ctx, sql, args...)
+	}
 	return c.pool.QueryRow(ctx, sql, args...)
 }
 
 func (c *Connection) Exec(ctx context.Context, sql string, args ...any) error {
-	_, err := c.pool.Exec(ctx, sql, args...)
+	tx := extractTx(ctx)
+
+	var err error
+	if tx != nil {
+		_, err = tx.Exec(ctx, sql, args...)
+	} else {
+		_, err = c.pool.Exec(ctx, sql, args...)
+	}
 	return err
 }
 
-func (c *Connection) Begin(ctx context.Context) (pgx.Tx, error) {
-	return c.pool.Begin(ctx)
+func (c *Connection) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := c.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	ctx = injectTx(ctx, tx)
+
+	err = fn(ctx)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	return tx.Commit(ctx)
 }

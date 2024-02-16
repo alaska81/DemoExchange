@@ -80,10 +80,14 @@ const (
 	OrderSideSell OrderSide = "sell"
 )
 
-func (o *Order) NewUID() {
+func NewOrder(accountUID AccountUID) *Order {
 	ts := TS()
 
-	o.OrderUID = uuid.New().String()
-	o.CreateTS = ts
-	o.UpdateTS = ts
+	return &Order{
+		AccountUID: accountUID,
+		OrderUID:   uuid.New().String(),
+		Status:     OrderStatusNew,
+		CreateTS:   ts,
+		UpdateTS:   ts,
+	}
 }

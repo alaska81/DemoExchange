@@ -10,6 +10,7 @@ import (
 )
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) error
@@ -25,20 +26,16 @@ func New(repo Repository) *Storage {
 	}
 }
 
-func (s *Storage) InsertAccountKey(ctx context.Context, tx pgx.Tx, key *entities.Key) error {
+func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return s.repo.WithTx(ctx, fn)
+}
+
+func (s *Storage) InsertAccountKey(ctx context.Context, key *entities.Key) error {
 	sql := `
 		INSERT INTO apikey (token, account_uid, create_ts, update_ts) VALUES ($1, $2, $3, $4)
 	`
 
-	var err error
-
-	if tx != nil {
-		_, err = tx.Exec(ctx, sql, key.Token, key.AccountUID, key.CreateTS, key.UpdateTS)
-	} else {
-		err = s.repo.Exec(ctx, sql, key.Token, key.AccountUID, key.CreateTS, key.UpdateTS)
-	}
-
-	return err
+	return s.repo.Exec(ctx, sql, key.Token, key.AccountUID, key.CreateTS, key.UpdateTS)
 }
 
 func (s *Storage) UpdateAccountKey(ctx context.Context, key *entities.Key) error {
@@ -47,22 +44,12 @@ func (s *Storage) UpdateAccountKey(ctx context.Context, key *entities.Key) error
 	return s.repo.Exec(ctx, sql, key.Token, key.Disabled, key.UpdateTS)
 }
 
-func (s *Storage) SelectAccountKeys(ctx context.Context, tx pgx.Tx, accountUID entities.AccountUID) ([]entities.Key, error) {
+func (s *Storage) SelectAccountKeys(ctx context.Context, accountUID entities.AccountUID) ([]entities.Key, error) {
 	result := make([]entities.Key, 0)
 
 	sql := `SELECT token, create_ts, update_ts FROM apikey WHERE account_uid = $1 AND disabled = false`
 
-	var (
-		rows pgx.Rows
-		err  error
-	)
-
-	if tx != nil {
-		rows, err = tx.Query(ctx, sql, accountUID)
-	} else {
-		rows, err = s.repo.Query(ctx, sql, accountUID)
-	}
-
+	rows, err := s.repo.Query(ctx, sql, accountUID)
 	if err != nil {
 		return result, err
 	}

@@ -16,6 +16,7 @@ const codeDivisionByZero = "22012"
 var ErrInsufficientFunds = errors.New("Insufficient funds")
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) error
@@ -31,22 +32,16 @@ func New(repo Repository) *Storage {
 	}
 }
 
-func (s *Storage) SelectBalances(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) (entities.Balances, error) {
+func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return s.repo.WithTx(ctx, fn)
+}
+
+func (s *Storage) SelectBalances(ctx context.Context, wallet entities.Wallet) (entities.Balances, error) {
 	result := make(entities.Balances, 0)
 
 	sql := `SELECT coin, total, hold FROM wallet WHERE exchange = $1 AND account_uid = $2`
 
-	var (
-		rows pgx.Rows
-		err  error
-	)
-
-	if tx != nil {
-		rows, err = tx.Query(ctx, sql, wallet.Exchange, wallet.AccountUID)
-	} else {
-		rows, err = s.repo.Query(ctx, sql, wallet.Exchange, wallet.AccountUID)
-	}
-
+	rows, err := s.repo.Query(ctx, sql, wallet.Exchange, wallet.AccountUID)
 	if err != nil {
 		return result, err
 	}
@@ -72,38 +67,24 @@ func (s *Storage) SelectBalances(ctx context.Context, tx pgx.Tx, wallet entities
 	return balances, err
 }
 
-func (s *Storage) AppendTotalCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error {
+func (s *Storage) AppendTotalCoin(ctx context.Context, wallet entities.Wallet) error {
 	sql := `
 		INSERT INTO wallet (exchange, account_uid, coin, total, update_ts) VALUES ($1, $2, $3, $4, $5) 
 		ON CONFLICT (exchange, account_uid, coin) DO UPDATE SET total = wallet.total + EXCLUDED.total
 	`
 
-	var err error
-
-	if tx != nil {
-		_, err = tx.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
-	} else {
-		err = s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
-	}
-
-	return err
+	return s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
 }
 
-func (s *Storage) SubtractTotalCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error {
+func (s *Storage) SubtractTotalCoin(ctx context.Context, wallet entities.Wallet) error {
 	sql := `
 		UPDATE wallet SET total = total - $4, update_ts = $5
 		WHERE exchange = $1 AND account_uid = $2 AND coin = $3
 			AND	(1 = 1 / CASE WHEN total >= $4 THEN 1 ELSE 0 END)
 			--AND	(1 = 1 / CASE WHEN total - hold >= $4 THEN 1 ELSE 0 END)
 	`
-	var err error
 
-	if tx != nil {
-		_, err = tx.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
-	} else {
-		err = s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
-	}
-
+	err := s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == codeDivisionByZero {
@@ -115,18 +96,10 @@ func (s *Storage) SubtractTotalCoin(ctx context.Context, tx pgx.Tx, wallet entit
 	return err
 }
 
-func (s *Storage) SetHoldCoin(ctx context.Context, tx pgx.Tx, wallet entities.Wallet) error {
+func (s *Storage) SetHoldCoin(ctx context.Context, wallet entities.Wallet) error {
 	sql := `
 		UPDATE wallet SET hold = $4, update_ts = $5 WHERE exchange = $1 AND account_uid = $2 AND coin = $3
 	`
 
-	var err error
-
-	if tx != nil {
-		_, err = tx.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Hold, wallet.UpdateTS)
-	} else {
-		err = s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Hold, wallet.UpdateTS)
-	}
-
-	return err
+	return s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Hold, wallet.UpdateTS)
 }

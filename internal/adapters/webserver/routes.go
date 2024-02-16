@@ -349,17 +349,16 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 		return
 	}
 
-	order := entities.Order{
-		Exchange:     entities.Exchange(req.Exchange),
-		Symbol:       entities.Symbol(req.Symbol),
-		Type:         entities.OrderType(req.Type),
-		PositionSide: entities.PositionSide(req.PositionSide),
-		Side:         entities.OrderSide(req.Side),
-		Amount:       req.Amount,
-		Price:        req.Price,
-	}
+	order := entities.NewOrder(accountUID.(entities.AccountUID))
+	order.Exchange = entities.Exchange(req.Exchange)
+	order.Symbol = entities.Symbol(req.Symbol)
+	order.Type = entities.OrderType(req.Type)
+	order.PositionSide = entities.PositionSide(req.PositionSide)
+	order.Side = entities.OrderSide(req.Side)
+	order.Amount = req.Amount
+	order.Price = req.Price
 
-	result, err := r.usecase.NewOrder(ctx, accountUID.(entities.AccountUID), order)
+	err := r.usecase.SetOrder(ctx, order)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -371,7 +370,7 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"return":  result,
+		"return":  order,
 		"time":    time.Now().Format("2006-01-02 15:04:05"),
 	})
 }

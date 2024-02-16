@@ -13,6 +13,7 @@ import (
 var ErrOrderNotFound = errors.New("Order not found")
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) error
@@ -26,6 +27,10 @@ func New(repo Repository) *Storage {
 	return &Storage{
 		repo,
 	}
+}
+
+func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return s.repo.WithTx(ctx, fn)
 }
 
 func (s *Storage) InsertOrder(ctx context.Context, order *entities.Order) error {

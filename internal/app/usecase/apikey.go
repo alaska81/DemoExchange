@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
 )
@@ -27,14 +25,14 @@ var initialBalance = map[entities.Exchange]entities.Balance{
 func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (entities.Token, error) {
 	var key *entities.Key
 
-	err := uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
-		account, err := uc.getAccount(ctx, tx, service, userID)
+	err := uc.apikey.WithTx(ctx, func(ctx context.Context) error {
+		account, err := uc.getAccount(ctx, service, userID)
 		if err != nil {
 			uc.log.Error(fmt.Sprintf("CreateToken:getAccount [service: %s, user_id: %s] error: %v", service, userID, err))
 			return err
 		}
 
-		keys, err := uc.apikey.SelectAccountKeys(ctx, tx, account.AccountUID)
+		keys, err := uc.apikey.SelectAccountKeys(ctx, account.AccountUID)
 		if err != nil {
 			return err
 		}
@@ -45,7 +43,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 
 		key = entities.NewToken(account.AccountUID)
 
-		err = uc.apikey.InsertAccountKey(ctx, tx, key)
+		err = uc.apikey.InsertAccountKey(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -64,7 +62,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 					UpdateTS: entities.TS(),
 				}
 
-				err := uc.wallet.AppendTotalCoin(ctx, tx, wallet)
+				err := uc.wallet.AppendTotalCoin(ctx, wallet)
 				if err != nil {
 					return err
 				}

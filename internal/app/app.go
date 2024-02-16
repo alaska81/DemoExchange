@@ -13,14 +13,12 @@ import (
 	"DemoExchange/internal/app/orderbook"
 	"DemoExchange/internal/app/tickers"
 	"DemoExchange/internal/app/usecase"
-	"DemoExchange/internal/app/usecase/storage/account"
-	"DemoExchange/internal/app/usecase/storage/apikey"
-	"DemoExchange/internal/app/usecase/storage/order"
-	"DemoExchange/internal/app/usecase/storage/position"
-	"DemoExchange/internal/app/usecase/storage/tx"
-	"DemoExchange/internal/app/usecase/storage/wallet"
-	"DemoExchange/internal/app/usecase/trade"
-	"DemoExchange/internal/app/usecase/trade/storage"
+	"DemoExchange/internal/app/usecase/cache"
+	"DemoExchange/internal/app/usecase/repo/account"
+	"DemoExchange/internal/app/usecase/repo/apikey"
+	"DemoExchange/internal/app/usecase/repo/order"
+	"DemoExchange/internal/app/usecase/repo/position"
+	"DemoExchange/internal/app/usecase/repo/wallet"
 	"DemoExchange/internal/config"
 	"DemoExchange/internal/logger"
 	"DemoExchange/migrator"
@@ -86,20 +84,18 @@ func New() (*App, error) {
 		},
 	}
 
-	tx := tx.New(repo)
 	account := account.New(repo)
 	apikey := apikey.New(repo)
 	wallet := wallet.New(repo)
 	order := order.New(repo)
 	position := position.New(repo)
 
-	storage := storage.New()
-	trade := trade.New(storage)
+	cache := cache.New()
 
 	tickers := tickers.New()
 	markets := markets.New()
 
-	usecase := usecase.New(cfgUsecase, tx, account, apikey, wallet, order, position, trade, log)
+	usecase := usecase.New(cfgUsecase, account, apikey, wallet, order, position, cache, log)
 
 	webserver, err := webserver.New(
 		webserver.Config{

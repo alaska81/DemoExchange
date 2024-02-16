@@ -10,28 +10,26 @@ type Config struct {
 }
 
 type Usecase struct {
-	cfg       Config
-	tx        Tx
-	account   AccountStorage
-	apikey    APIKeyStorage
-	wallet    WalletStorage
-	order     OrderStorage
-	position  PositionStorage
-	trade     Trade
-	log       Logger
-	chTraders chan interface{}
+	cfg      Config
+	account  AccountStorage
+	apikey   APIKeyStorage
+	wallet   WalletStorage
+	order    OrderStorage
+	position PositionStorage
+	cache    Cache
+	log      Logger
+	chOrders chan interface{}
 }
 
-func New(cfg Config, tx Tx, account AccountStorage, apikey APIKeyStorage, wallet WalletStorage, order OrderStorage, position PositionStorage, trade Trade, log Logger) *Usecase {
+func New(cfg Config, account AccountStorage, apikey APIKeyStorage, wallet WalletStorage, order OrderStorage, position PositionStorage, cache Cache, log Logger) *Usecase {
 	return &Usecase{
 		cfg,
-		tx,
 		account,
 		apikey,
 		wallet,
 		order,
 		position,
-		trade,
+		cache,
 		log,
 		make(chan interface{}, lenBufferOrders),
 	}

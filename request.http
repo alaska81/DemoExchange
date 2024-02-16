@@ -99,7 +99,7 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
     "type": "market",
     "position_side": "long",
     "side": "sell",
-    "amount": 0.05
+    "amount": 0.01
 }
 
 ### 
@@ -112,16 +112,16 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
     "symbol": "BTC/USDT",
     "type": "limit",
     "side": "buy",
-    "amount": 0.001,
-    "price": 43000
+    "amount": 0.01,
+    "price": 55000
 }
 
 
 
 ### 
-GET http://localhost:44444/v1/order/get?exchange=demo_futures&order_uid=8591bc42-1479-45be-ad6a-d7e20205fc98 HTTP/1.1
+GET http://localhost:44444/v1/order/get?exchange=demo_futures&order_uid=a4bc9ea5-8695-42a1-9b22-64824be77d09 HTTP/1.1
 content-type: application/json
-token: db936be21e11e5df735b20a802a0a250266dc6e7
+token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 ### 
 GET https://demo-exchange.cryptorobotics.net/v1/order/get?exchange=demo_futures&order_uid=6a4b91cb-ad15-45f4-82d7-9b348ff070ad HTTP/1.1
@@ -133,10 +133,10 @@ token: db936be21e11e5df735b20a802a0a250266dc6e7
 ### 
 POST http://localhost:44444/v1/order/cancel HTTP/1.1
 content-type: application/json
-token: db936be21e11e5df735b20a802a0a250266dc6e7
+token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 {
-    "order_uid": "8591bc42-1479-45be-ad6a-d7e20205fc98"
+    "order_uid": "0a3024a5-f3ba-4b67-a918-996ff2726936"
 }
 
 ### 
@@ -145,7 +145,7 @@ content-type: application/json
 token: db936be21e11e5df735b20a802a0a250266dc6e7
 
 {
-    "order_uid": "6a4b91cb-ad15-45f4-82d7-9b348ff070ad"
+    "order_uid": "0a3024a5-f3ba-4b67-a918-996ff2726936"
 }
 
 

@@ -5,17 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
-
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
 	"DemoExchange/internal/app/tickers"
 )
 
 func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error) {
-	account, err := uc.getAccountByUID(ctx, nil, accountUID)
+	account, err := uc.GetAccountByUID(ctx, accountUID)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("PositionsList:getAccountByUID [AccountUID: %s] error: %v", accountUID, err))
+		uc.log.Error(fmt.Sprintf("PositionsList:GetAccountByUID [AccountUID: %s] error: %v", accountUID, err))
 		return nil, err
 	}
 
@@ -87,12 +85,12 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 }
 
 func (uc *Usecase) SetPositionMarginType(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, marginType entities.MarginType) error {
-	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
+	return uc.position.WithTx(ctx, func(ctx context.Context) error {
 		if err := uc.checkPresentPendingOrders(ctx, exchange, accountUID, &symbol); err != nil {
 			return apperror.ErrSetMarginType.Wrap(err)
 		}
 
-		positions, err := uc.getPositionsBySymbol(ctx, tx, exchange, accountUID, symbol)
+		positions, err := uc.getPositionsBySymbol(ctx, exchange, accountUID, symbol)
 		if err != nil {
 			return apperror.ErrSetMarginType.Wrap(err)
 		}
@@ -105,7 +103,7 @@ func (uc *Usecase) SetPositionMarginType(ctx context.Context, exchange entities.
 
 			position.MarginType = marginType
 
-			if err := uc.savePosition(ctx, tx, position); err != nil {
+			if err := uc.SavePosition(ctx, position); err != nil {
 				return apperror.ErrSetMarginType.Wrap(err)
 			}
 		}
@@ -115,12 +113,12 @@ func (uc *Usecase) SetPositionMarginType(ctx context.Context, exchange entities.
 }
 
 func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, leverage entities.PositionLeverage) error {
-	return uc.tx.WithTX(ctx, func(tx pgx.Tx) error {
+	return uc.position.WithTx(ctx, func(ctx context.Context) error {
 		if err := uc.checkPresentPendingOrders(ctx, exchange, accountUID, &symbol); err != nil {
 			return apperror.ErrSetLeverage.Wrap(err)
 		}
 
-		positions, err := uc.getPositionsBySymbol(ctx, tx, exchange, accountUID, symbol)
+		positions, err := uc.getPositionsBySymbol(ctx, exchange, accountUID, symbol)
 		if err != nil {
 			return apperror.ErrSetLeverage.Wrap(err)
 		}
@@ -133,7 +131,7 @@ func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Ex
 
 			position.Leverage = leverage
 
-			if err := uc.savePosition(ctx, tx, position); err != nil {
+			if err := uc.SavePosition(ctx, position); err != nil {
 				return apperror.ErrSetLeverage.Wrap(err)
 			}
 		}
@@ -142,34 +140,34 @@ func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Ex
 	})
 }
 
-func (uc *Usecase) getPositionBySide(ctx context.Context, tx pgx.Tx, order *entities.Order) (*entities.Position, error) {
-	position, err := uc.position.SelectPositionBySide(ctx, tx, order.AccountUID, order.Symbol, order.PositionSide)
+func (uc *Usecase) GetPositionBySide(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error) {
+	position, err := uc.position.SelectPositionBySide(ctx, accountUID, symbol, side)
 	if err != nil {
 		if !errors.Is(err, apperror.ErrPositionNotFound) {
-			uc.log.Error(fmt.Sprintf("getPositionBySide:SelectPositionBySide [AccountUID: %s, position_side: %s] error: %v", order.AccountUID, order.PositionSide, err))
+			uc.log.Error(fmt.Sprintf("getPositionBySide:SelectPositionBySide [AccountUID: %s, position_side: %s] error: %v", accountUID, side, err))
 			return nil, err
 		}
 
-		account, err := uc.getAccountByUID(ctx, tx, order.AccountUID)
+		account, err := uc.GetAccountByUID(ctx, accountUID)
 		if err != nil {
-			uc.log.Error(fmt.Sprintf("getPositionBySide:getAccountByUID [AccountUID: %s] error: %v", order.AccountUID, err))
+			uc.log.Error(fmt.Sprintf("getPositionBySide:GetAccountByUID [AccountUID: %s] error: %v", accountUID, err))
 			return nil, err
 		}
 
-		position = entities.NewPosition(account, order.Exchange, order.Symbol, order.PositionSide)
+		position = entities.NewPosition(account, exchange, symbol, side)
 	}
 
 	return position, nil
 }
 
-func (uc *Usecase) getPositionsBySymbol(ctx context.Context, tx pgx.Tx, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error) {
-	account, err := uc.getAccountByUID(ctx, nil, accountUID)
+func (uc *Usecase) getPositionsBySymbol(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error) {
+	account, err := uc.GetAccountByUID(ctx, accountUID)
 	if err != nil {
-		uc.log.Error(fmt.Sprintf("getPositionBySymbol:getAccountByUID [AccountUID: %s] error: %v", accountUID, err))
+		uc.log.Error(fmt.Sprintf("getPositionBySymbol:GetAccountByUID [AccountUID: %s] error: %v", accountUID, err))
 		return nil, err
 	}
 
-	positions, err := uc.position.SelectPositionsBySymbol(ctx, tx, accountUID, symbol)
+	positions, err := uc.position.SelectPositionsBySymbol(ctx, accountUID, symbol)
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("getPositionBySymbol:SelectPositionsBySymbol [AccountUID: %s, symbol: %s] error: %v", accountUID, symbol, err))
 		return nil, err
@@ -209,15 +207,17 @@ func (uc *Usecase) checkPresentOpenPosition(ctx context.Context, exchange entiti
 	return nil
 }
 
-func (uc *Usecase) savePosition(ctx context.Context, tx pgx.Tx, position *entities.Position) error {
+func (uc *Usecase) SavePosition(ctx context.Context, position *entities.Position) error {
 	if position.IsNew {
-		if err := uc.position.InsertPosition(ctx, tx, position); err != nil {
+		if err := uc.position.InsertPosition(ctx, position); err != nil {
 			uc.log.Error(fmt.Sprintf("savePosition:InsertPosition [%+v] error: %v", position, err))
 			return err
 		}
+
+		return nil
 	}
 
-	if err := uc.position.UpdatePosition(ctx, tx, position); err != nil {
+	if err := uc.position.UpdatePosition(ctx, position); err != nil {
 		uc.log.Error(fmt.Sprintf("savePosition:UpdatePosition [%+v] error: %v", position, err))
 		return err
 	}
