@@ -82,8 +82,10 @@ func NewPosition(account *Account, exchange Exchange, symbol Symbol, positionSid
 	}
 }
 
-func (p *Position) Calc() {
+func (p *Position) Calc(price float64) {
 	leverage := float64(p.Leverage)
+
+	p.MarkPrice = price
 
 	if p.Mode == PositionModeHedge {
 		if p.Side == PositionSideLong {

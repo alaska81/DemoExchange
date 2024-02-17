@@ -13,12 +13,6 @@ import (
 	"DemoExchange/internal/app/orderbook"
 	"DemoExchange/internal/app/tickers"
 	"DemoExchange/internal/app/usecase"
-	"DemoExchange/internal/app/usecase/cache"
-	"DemoExchange/internal/app/usecase/repo/account"
-	"DemoExchange/internal/app/usecase/repo/apikey"
-	"DemoExchange/internal/app/usecase/repo/order"
-	"DemoExchange/internal/app/usecase/repo/position"
-	"DemoExchange/internal/app/usecase/repo/wallet"
 	"DemoExchange/internal/config"
 	"DemoExchange/internal/logger"
 	"DemoExchange/migrator"
@@ -84,18 +78,10 @@ func New() (*App, error) {
 		},
 	}
 
-	account := account.New(repo)
-	apikey := apikey.New(repo)
-	wallet := wallet.New(repo)
-	order := order.New(repo)
-	position := position.New(repo)
-
-	cache := cache.New()
-
 	tickers := tickers.New()
 	markets := markets.New()
 
-	usecase := usecase.New(cfgUsecase, account, apikey, wallet, order, position, cache, log)
+	usecase := usecase.New(cfgUsecase, repo, log)
 
 	webserver, err := webserver.New(
 		webserver.Config{
@@ -143,7 +129,8 @@ func (a *App) Run(ctx context.Context, cancel context.CancelFunc) error {
 	<-a.markets.Process(ctx)
 	<-a.tickers.Process(ctx)
 
-	go a.usecase.Process(ctx)
+	go a.usecase.ProcessOrders(ctx)
+	go a.usecase.ProcessPositions(ctx)
 
 	go func() {
 		err := a.webserver.Start(ctx)
@@ -155,6 +142,11 @@ func (a *App) Run(ctx context.Context, cancel context.CancelFunc) error {
 	err = a.usecase.ProcessPendingOrders(ctx)
 	if err != nil {
 		return fmt.Errorf("process pending orders: %w", err)
+	}
+
+	err = a.usecase.ProcessOpenPositions(ctx)
+	if err != nil {
+		return fmt.Errorf("process open positions: %w", err)
 	}
 
 	return nil

@@ -5,7 +5,16 @@ import (
 
 	"DemoExchange/internal/app/entities"
 	"DemoExchange/internal/app/usecase/orders"
+
+	"github.com/jackc/pgx/v5"
 )
+
+type Connection interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	Exec(ctx context.Context, sql string, args ...any) error
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 type AccountStorage interface {
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
@@ -49,13 +58,14 @@ type PositionStorage interface {
 	SelectPositionsBySymbol(ctx context.Context, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
 	SelectAccountPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
 	SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
+	SelectOpenPositions(ctx context.Context) ([]*entities.Position, error)
 }
 
 type Cache interface {
-	Set(order *entities.Order)
-	Get(orderUID string) (*entities.Order, bool)
-	Delete(orderUID string)
-	List() []*entities.Order
+	Set(uid string, value any)
+	Get(uid string) (any, bool)
+	Delete(uid string)
+	List() []any
 }
 
 type Logger interface {

@@ -188,30 +188,6 @@ func (uc *Usecase) AppendBalance(ctx context.Context, exchange entities.Exchange
 	return nil
 }
 
-// func (uc *Usecase) holdBalance(ctx context.Context, order *entities.Order) error {
-// 	if order.Exchange == entities.ExchangeSpot {
-// 		return uc.holdBalanceSpot(ctx, order)
-// 	} else {
-// 		return uc.holdBalanceFutures(ctx, order)
-// 	}
-// }
-
-// func (uc *Usecase) unholdBalance(ctx context.Context, order *entities.Order) error {
-// 	if order.Exchange == entities.ExchangeSpot {
-// 		return uc.unholdBalanceSpot(ctx, order)
-// 	} else {
-// 		return uc.unholdBalanceFutures(ctx, order)
-// 	}
-// }
-
-// func (uc *Usecase) appendBalance(ctx context.Context, order *entities.Order) error {
-// 	if order.Exchange == entities.ExchangeSpot {
-// 		return uc.appendBalanceSpot(ctx, order)
-// 	} else {
-// 		return uc.appendBalanceFutures(ctx, order)
-// 	}
-// }
-
 func (uc *Usecase) getBalanceLimit(coin entities.Coin) float64 {
 	return uc.cfg.MaxBalances[coin]
 }

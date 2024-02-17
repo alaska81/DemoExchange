@@ -131,7 +131,7 @@ func (s *Storage) SelectAccountOpenPositions(ctx context.Context, exchange entit
 	sql := `
 		SELECT account_uid, position_uid, exchange, symbol, position_mode, position_type, leverage, side, amount, price, margin, hold_amount, create_ts, update_ts 
 		FROM "position" 
-		WHERE exchange = $1 AND account_uid = $2 AND (hold_amount > 0 OR amount > 0)
+		WHERE exchange = $1 AND account_uid = $2 AND amount <> 0
 	`
 	var (
 		rows pgx.Rows
@@ -139,6 +139,35 @@ func (s *Storage) SelectAccountOpenPositions(ctx context.Context, exchange entit
 	)
 
 	rows, err = s.repo.Query(ctx, sql, exchange, accountUID)
+	if err != nil {
+		return nil, err
+	}
+
+	var position entities.Position
+
+	positions := make([]*entities.Position, 0)
+
+	_, err = pgx.ForEachRow(rows, []any{&position.AccountUID, &position.PositionUID, &position.Exchange, &position.Symbol, &position.Mode, &position.MarginType, &position.Leverage, &position.Side, &position.Amount, &position.Price, &position.Margin, &position.HoldAmount, &position.CreateTS, &position.UpdateTS}, func() error {
+		position := position
+		positions = append(positions, &position)
+		return nil
+	})
+
+	return positions, err
+}
+
+func (s *Storage) SelectOpenPositions(ctx context.Context) ([]*entities.Position, error) {
+	sql := `
+		SELECT account_uid, position_uid, exchange, symbol, position_mode, position_type, leverage, side, amount, price, margin, hold_amount, create_ts, update_ts 
+		FROM "position" 
+		WHERE amount <> 0
+	`
+	var (
+		rows pgx.Rows
+		err  error
+	)
+
+	rows, err = s.repo.Query(ctx, sql)
 	if err != nil {
 		return nil, err
 	}

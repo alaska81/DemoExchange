@@ -358,7 +358,7 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 	order.Amount = req.Amount
 	order.Price = req.Price
 
-	err := r.usecase.SetOrder(ctx, order)
+	err := r.usecase.NewOrder(ctx, order)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

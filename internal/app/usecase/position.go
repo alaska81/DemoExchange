@@ -4,11 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
-	"DemoExchange/internal/app/tickers"
 )
+
+const processTimeout = 10 * time.Second
+
+var muPositionProcess = new(sync.Mutex)
 
 func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error) {
 	account, err := uc.GetAccountByUID(ctx, accountUID)
@@ -17,8 +22,7 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 		return nil, err
 	}
 
-	r := tickers.New()
-	tickers, err := r.GetTickers(exchange.Name())
+	tickers, err := uc.tickers.GetTickers(exchange.Name())
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("PositionsList:GetTickers [exchange: %s] error: %v", exchange.Name(), err))
 		return nil, err
@@ -57,8 +61,7 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				position = entities.NewPosition(account, exchange, symbol, entities.PositionSideBoth)
 			}
 
-			position.MarkPrice = ticker.Last
-			position.Calc()
+			position.Calc(ticker.Last)
 			result = append(result, position)
 		} else {
 			positionLong, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideLong}]
@@ -66,8 +69,7 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				positionLong = entities.NewPosition(account, exchange, symbol, entities.PositionSideLong)
 			}
 
-			positionLong.MarkPrice = ticker.Last
-			positionLong.Calc()
+			positionLong.Calc(ticker.Last)
 			result = append(result, positionLong)
 
 			positionShort, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideShort}]
@@ -75,8 +77,7 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				positionShort = entities.NewPosition(account, exchange, symbol, entities.PositionSideShort)
 			}
 
-			positionShort.MarkPrice = ticker.Last
-			positionShort.Calc()
+			positionShort.Calc(ticker.Last)
 			result = append(result, positionShort)
 		}
 	}
@@ -140,26 +141,6 @@ func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Ex
 	})
 }
 
-func (uc *Usecase) GetPositionBySide(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error) {
-	position, err := uc.position.SelectPositionBySide(ctx, accountUID, symbol, side)
-	if err != nil {
-		if !errors.Is(err, apperror.ErrPositionNotFound) {
-			uc.log.Error(fmt.Sprintf("getPositionBySide:SelectPositionBySide [AccountUID: %s, position_side: %s] error: %v", accountUID, side, err))
-			return nil, err
-		}
-
-		account, err := uc.GetAccountByUID(ctx, accountUID)
-		if err != nil {
-			uc.log.Error(fmt.Sprintf("getPositionBySide:GetAccountByUID [AccountUID: %s] error: %v", accountUID, err))
-			return nil, err
-		}
-
-		position = entities.NewPosition(account, exchange, symbol, side)
-	}
-
-	return position, nil
-}
-
 func (uc *Usecase) getPositionsBySymbol(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error) {
 	account, err := uc.GetAccountByUID(ctx, accountUID)
 	if err != nil {
@@ -207,6 +188,26 @@ func (uc *Usecase) checkPresentOpenPosition(ctx context.Context, exchange entiti
 	return nil
 }
 
+func (uc *Usecase) GetPositionBySide(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error) {
+	position, err := uc.position.SelectPositionBySide(ctx, accountUID, symbol, side)
+	if err != nil {
+		if !errors.Is(err, apperror.ErrPositionNotFound) {
+			uc.log.Error(fmt.Sprintf("getPositionBySide:SelectPositionBySide [AccountUID: %s, position_side: %s] error: %v", accountUID, side, err))
+			return nil, err
+		}
+
+		account, err := uc.GetAccountByUID(ctx, accountUID)
+		if err != nil {
+			uc.log.Error(fmt.Sprintf("getPositionBySide:GetAccountByUID [AccountUID: %s] error: %v", accountUID, err))
+			return nil, err
+		}
+
+		position = entities.NewPosition(account, exchange, symbol, side)
+	}
+
+	return position, nil
+}
+
 func (uc *Usecase) SavePosition(ctx context.Context, position *entities.Position) error {
 	if position.IsNew {
 		if err := uc.position.InsertPosition(ctx, position); err != nil {
@@ -214,12 +215,121 @@ func (uc *Usecase) SavePosition(ctx context.Context, position *entities.Position
 			return err
 		}
 
+		uc.chPositions <- position
 		return nil
 	}
 
 	if err := uc.position.UpdatePosition(ctx, position); err != nil {
 		uc.log.Error(fmt.Sprintf("savePosition:UpdatePosition [%+v] error: %v", position, err))
 		return err
+	}
+
+	uc.chPositions <- position
+	return nil
+}
+
+func (uc *Usecase) updatePosition(ctx context.Context, position *entities.Position) {
+	ctx, cancel := context.WithTimeout(ctx, TimeoutUpdate)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			uc.log.Error(fmt.Sprintf("updatePosition:Done [%+v] error: %v", *position, ctx.Err()))
+			return
+		default:
+			position.UpdateTS = entities.TS()
+			if err := uc.position.UpdatePosition(ctx, position); err != nil {
+				uc.log.Error(fmt.Sprintf("updatePosition:UpdatePosition [%+v] error: %v", *position, err))
+				time.Sleep(TimeoutRetry)
+				continue
+			}
+			return
+		}
+	}
+}
+
+func (uc *Usecase) ProcessPositions(ctx context.Context) {
+	for {
+		position := <-uc.chPositions
+
+		muPositionProcess.Lock()
+		value, ok := uc.cachePositions.Get(position.PositionUID)
+		if ok {
+			old, ok := value.(*entities.Position)
+			if ok {
+				old.Amount = position.Amount
+				old.Price = position.Price
+				old.Margin = position.Margin
+				old.HoldAmount = position.HoldAmount
+				old.UpdateTS = position.UpdateTS
+
+				muPositionProcess.Unlock()
+				return
+			}
+		}
+
+		uc.cachePositions.Set(position.PositionUID, position)
+		muPositionProcess.Unlock()
+
+		go func() {
+			defer func() {
+				uc.cachePositions.Delete(position.PositionUID)
+			}()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					muPositionProcess.Lock()
+					// uc.log.Info(fmt.Sprintf("ProcessPositions [%+v]", *position))
+					if position.Amount == 0 {
+						muPositionProcess.Unlock()
+						return
+					}
+
+					ticker, err := uc.tickers.GetTickerWithContext(ctx, position.Exchange.Name(), position.Symbol.String())
+					if err != nil {
+						time.Sleep(processTimeout)
+						continue
+					}
+					position.Calc(ticker.Last)
+
+					if position.MarginBalance <= 0 {
+						uc.log.Info(fmt.Sprintf("ProcessPositions:Liquidation [%+v]", *position))
+						position.Amount = 0
+						position.HoldAmount = 0
+						position.Margin = 0
+
+						uc.updatePosition(ctx, position)
+						muPositionProcess.Unlock()
+						return
+					}
+					muPositionProcess.Unlock()
+
+					time.Sleep(processTimeout)
+				}
+			}
+		}()
+	}
+}
+
+func (uc *Usecase) ProcessOpenPositions(ctx context.Context) error {
+	positions, err := uc.position.SelectOpenPositions(ctx)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("ProcessOpenPositions:SelectOpenPositions error: %v", err))
+		return err
+	}
+
+	uc.log.Info("ProcessOpenPositions: ", len(positions))
+
+	for _, position := range positions {
+		position := position
+		go func() {
+			uc.chPositions <- position
+		}()
+
 	}
 
 	return nil

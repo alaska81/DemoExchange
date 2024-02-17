@@ -12,13 +12,14 @@ import (
 )
 
 const (
-	Timeout     = 5 * time.Second
-	Limit   int = 100
+	TimeoutUpdate     = 60 * time.Minute
+	TimeoutRetry      = 10 * time.Second
+	Limit         int = 100
 )
 
 var muOrder = &sync.RWMutex{}
 
-func (uc *Usecase) SetOrder(ctx context.Context, o *entities.Order) error {
+func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 	var err error
 
 	order, err := orders.NewOrder(ctx, uc, o)
@@ -34,12 +35,12 @@ func (uc *Usecase) SetOrder(ctx context.Context, o *entities.Order) error {
 		defer muOrder.Unlock()
 
 		if err := order.HoldBalance(ctx, uc, uc.log); err != nil {
-			uc.log.Error(fmt.Sprintf("SetOrder:HoldBalance [%+v] error: %v", *order, err))
+			uc.log.Error(fmt.Sprintf("NewOrder:HoldBalance [%+v] error: %v", *order, err))
 			return err
 		}
 
 		if err := uc.saveOrder(ctx, order.GetOrder()); err != nil {
-			uc.log.Error(fmt.Sprintf("SetOrder:saveOrder [%+v] error: %v", *order, err))
+			uc.log.Error(fmt.Sprintf("NewOrder:saveOrder [%+v] error: %v", *order, err))
 			return err
 		}
 
@@ -49,8 +50,6 @@ func (uc *Usecase) SetOrder(ctx context.Context, o *entities.Order) error {
 		return err
 	}
 
-	uc.cache.Set(order.GetOrder())
-
 	go func() {
 		uc.chOrders <- order
 	}()
@@ -58,23 +57,21 @@ func (uc *Usecase) SetOrder(ctx context.Context, o *entities.Order) error {
 	return nil
 }
 
-func (uc *Usecase) Process(ctx context.Context) {
+func (uc *Usecase) ProcessOrders(ctx context.Context) {
 	for {
-		in := <-uc.chOrders
-
-		order, ok := in.(Order)
-		if !ok {
-			continue
-		}
+		order := <-uc.chOrders
 
 		go func() {
+			o := order.GetOrder()
+			uc.cacheOrders.Set(o.OrderUID, o)
+
 			defer func() {
-				uc.cache.Delete(order.GetOrder().OrderUID)
+				uc.cacheOrders.Delete(o.OrderUID)
 			}()
 
 			ch, err := order.Process(ctx)
 			if err != nil {
-				uc.log.Error(fmt.Sprintf("Process:Process [%+v] error: %v", order, err))
+				uc.log.Error(fmt.Sprintf("ProcessOrders:Process [%+v] error: %v", *order, err))
 				return
 			}
 
@@ -83,25 +80,26 @@ func (uc *Usecase) Process(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case status, ok := <-ch:
-					uc.log.Info(fmt.Sprintf("Process:channel [%+v]: %v", status, ok))
+					uc.log.Info(fmt.Sprintf("ProcessOrders:channel [%+v]: %v", status, ok))
 					if !ok {
 						return
 					}
 
 					muOrder.Lock()
-					o := order.GetOrder()
 
 					if status == entities.OrderStatusSuccess {
+						uc.log.Info(fmt.Sprintf("ProcessOrders:AppendBalance [%+v]", *order))
 						if err := order.AppendBalance(ctx, uc, uc.log); err != nil {
-							uc.log.Error(fmt.Sprintf("Process:AppendBalance [%+v] error: %v", *o, err))
+							uc.log.Error(fmt.Sprintf("ProcessOrders:AppendBalance [%+v] error: %v", *order, err))
 							status = entities.OrderStatusFailed
 							o.Error = err.Error()
 						}
 					}
 
 					if status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
+						uc.log.Info(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v]", *order))
 						if err := order.UnholdBalance(ctx, uc, uc.log); err != nil {
-							uc.log.Error(fmt.Sprintf("Process:HoldBalance [%+v] error: %v", *o, err))
+							uc.log.Error(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v] error: %v", *order, err))
 							status = entities.OrderStatusFailed
 							o.Error = err.Error()
 						}
@@ -121,6 +119,30 @@ func (uc *Usecase) Process(ctx context.Context) {
 	}
 }
 
+func (uc *Usecase) ProcessPendingOrders(ctx context.Context) error {
+	pendingOrders, err := uc.order.SelectPendingOrders(ctx)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("ProcessPendingOrders:SelectPendingOrders error: %v", err))
+		return err
+	}
+
+	uc.log.Info("ProcessPendingOrders: ", len(pendingOrders))
+
+	for _, o := range pendingOrders {
+		order, err := orders.NewOrder(ctx, uc, o)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			uc.chOrders <- order
+		}()
+
+	}
+
+	return nil
+}
+
 func (uc *Usecase) GetOrder(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, orderUID string) (*entities.Order, error) {
 	order, err := uc.order.SelectOrder(ctx, exchange, accountUID, orderUID)
 	if err != nil {
@@ -132,7 +154,14 @@ func (uc *Usecase) GetOrder(ctx context.Context, exchange entities.Exchange, acc
 }
 
 func (uc *Usecase) CancelOrder(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, orderUID string) (*entities.Order, error) {
-	order, ok := uc.cache.Get(orderUID)
+	value, ok := uc.cacheOrders.Get(orderUID)
+	if !ok {
+		err := apperror.ErrOrderNotFound
+		uc.log.Error(fmt.Sprintf("CancelOrder:Get [account_uid: %v] [order_uid: %v] error: %v", accountUID, orderUID, err))
+		return nil, err
+	}
+
+	order, ok := value.(*entities.Order)
 	if !ok {
 		err := apperror.ErrOrderNotFound
 		uc.log.Error(fmt.Sprintf("CancelOrder:Get [account_uid: %v] [order_uid: %v] error: %v", accountUID, orderUID, err))
@@ -156,72 +185,24 @@ func (uc *Usecase) OrdersList(ctx context.Context, exchange entities.Exchange, a
 	return uc.order.SelectOrders(ctx, exchange, accountUID, statuses, limit)
 }
 
-func (uc *Usecase) ProcessPendingOrders(ctx context.Context) error {
-	pendingOrders, err := uc.order.SelectPendingOrders(ctx)
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("ProcessPendingOrders:SelectPendingOrders error: %v", err))
-		return err
-	}
-
-	uc.log.Info("ProcessPendingOrders: ", len(pendingOrders))
-
-	for _, o := range pendingOrders {
-		order, err := orders.NewOrder(ctx, uc, o)
-		if err != nil {
-			return err
-		}
-
-		uc.cache.Set(order.GetOrder())
-
-		go func() {
-			uc.chOrders <- order
-		}()
-
-	}
-
-	return nil
-}
-
-// func (uc *Usecase) closeOrder(ctx context.Context, order *entities.Order) error {
-// 	return uc.unholdBalance(ctx, order)
-// }
-
-// func (uc *Usecase) executeOrder(ctx context.Context, order *entities.Order) error {
-// 	return uc.appendBalance(ctx, order)
-// }
-
-// func (uc *Usecase) validateOrder(ctx context.Context, order *entities.Order) error {
-// 	account, err := uc.getAccountByUID(ctx, order.AccountUID)
-// 	if err != nil {
-// 		uc.log.Error(fmt.Sprintf("validateOrder:GetAccountByUID [AccountUID: %s] error: %v", order.AccountUID, err))
-// 		return err
-// 	}
-
-// 	if account.PositionMode == entities.PositionModeOneway {
-// 		order.PositionSide = entities.PositionSideBoth
-// 	} else {
-// 		if order.PositionSide != entities.PositionSideLong && order.PositionSide != entities.PositionSideShort {
-// 			return apperror.ErrInvalidPositionSide
-// 		}
-// 	}
-
-// 	return nil
-// }
-
 func (uc *Usecase) saveOrder(ctx context.Context, order *entities.Order) error {
 	return uc.order.InsertOrder(ctx, order)
 }
 
 func (uc *Usecase) updateOrder(ctx context.Context, order *entities.Order) {
+	ctx, cancel := context.WithTimeout(ctx, TimeoutUpdate)
+	defer cancel()
+
 	for {
 		select {
 		case <-ctx.Done():
+			uc.log.Error(fmt.Sprintf("updateOrder:Done [%+v] error: %v", *order, ctx.Err()))
 			return
 		default:
 			order.UpdateTS = entities.TS()
 			if err := uc.order.UpdateOrder(ctx, order); err != nil {
-				uc.log.Error(fmt.Sprintf("updateOrder:UpdateOrder [%+v] error: %v", order, err))
-				time.Sleep(Timeout)
+				uc.log.Error(fmt.Sprintf("updateOrder:UpdateOrder [%+v] error: %v", *order, err))
+				time.Sleep(TimeoutRetry)
 				continue
 			}
 			return
