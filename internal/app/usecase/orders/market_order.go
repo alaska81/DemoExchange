@@ -42,7 +42,7 @@ func (o *MarketOrder) Process(ctx context.Context) <-chan entities.OrderStatus {
 	go func() {
 		defer func() {
 			close(ch)
-			fmt.Println("MarketOrder.Process: close", o.order)
+			fmt.Printf("MarketOrder.Process:close %+v\n", o.order)
 		}()
 
 		fmt.Printf("MarketOrder.Process: %+v\n", o.order)

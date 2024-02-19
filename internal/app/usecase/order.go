@@ -59,63 +59,71 @@ func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 
 func (uc *Usecase) ProcessOrders(ctx context.Context) {
 	for {
-		order := <-uc.chOrders
+		select {
+		case <-ctx.Done():
+			uc.log.Error(fmt.Sprintf("ProcessOrders:Done error: %v", ctx.Err()))
+			return
 
-		go func() {
-			o := order.GetOrder()
-			uc.cacheOrders.Set(o.OrderUID, o)
+		case order := <-uc.chOrders:
 
-			defer func() {
-				uc.cacheOrders.Delete(o.OrderUID)
-			}()
+			go func(order *orders.Order) {
+				o := order.GetOrder()
+				uc.log.Info(fmt.Sprintf("ProcessOrders [%+v]", *o))
 
-			ch, err := order.Process(ctx)
-			if err != nil {
-				uc.log.Error(fmt.Sprintf("ProcessOrders:Process [%+v] error: %v", *order, err))
-				return
-			}
+				uc.cacheOrders.Set(o.OrderUID, o)
+				defer func() {
+					uc.cacheOrders.Delete(o.OrderUID)
+					uc.log.Info(fmt.Sprintf("ProcessOrders:Process:close [%+v]", *o))
+				}()
 
-			for {
-				select {
-				case <-ctx.Done():
+				ch, err := order.Process(ctx)
+				if err != nil {
+					uc.log.Error(fmt.Sprintf("ProcessOrders:Process [%+v] error: %v", *o, err))
 					return
-				case status, ok := <-ch:
-					uc.log.Info(fmt.Sprintf("ProcessOrders:channel [%+v]: %v", status, ok))
-					if !ok {
+				}
+
+				for {
+					select {
+					case <-ctx.Done():
 						return
-					}
-
-					muOrder.Lock()
-
-					if status == entities.OrderStatusSuccess {
-						uc.log.Info(fmt.Sprintf("ProcessOrders:AppendBalance [%+v]", *order))
-						if err := order.AppendBalance(ctx, uc, uc.log); err != nil {
-							uc.log.Error(fmt.Sprintf("ProcessOrders:AppendBalance [%+v] error: %v", *order, err))
-							status = entities.OrderStatusFailed
-							o.Error = err.Error()
+					case status, ok := <-ch:
+						uc.log.Info(fmt.Sprintf("ProcessOrders:channel [%+v]: %v", status, ok))
+						if !ok {
+							return
 						}
-					}
 
-					if status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
-						uc.log.Info(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v]", *order))
-						if err := order.UnholdBalance(ctx, uc, uc.log); err != nil {
-							uc.log.Error(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v] error: %v", *order, err))
-							status = entities.OrderStatusFailed
-							o.Error = err.Error()
+						muOrder.Lock()
+
+						if status == entities.OrderStatusSuccess {
+							uc.log.Info(fmt.Sprintf("ProcessOrders:AppendBalance [%+v]", *o))
+							if err := order.AppendBalance(ctx, uc, uc.log); err != nil {
+								uc.log.Error(fmt.Sprintf("ProcessOrders:AppendBalance [%+v] error: %v", *o, err))
+								status = entities.OrderStatusFailed
+								o.Error = err.Error()
+							}
 						}
-					}
 
-					o.Status = status
+						if status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
+							uc.log.Info(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v]", *o))
+							if err := order.UnholdBalance(ctx, uc, uc.log); err != nil {
+								uc.log.Error(fmt.Sprintf("ProcessOrders:UnholdBalance [%+v] error: %v", *o, err))
+								status = entities.OrderStatusFailed
+								o.Error = err.Error()
+							}
+						}
 
-					uc.updateOrder(ctx, o)
-					muOrder.Unlock()
+						o.Status = status
 
-					if status == entities.OrderStatusSuccess || status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
-						return
+						uc.updateOrder(ctx, o)
+						muOrder.Unlock()
+
+						if status == entities.OrderStatusSuccess || status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
+							return
+						}
 					}
 				}
-			}
-		}()
+			}(order)
+		}
 	}
 }
 
@@ -199,6 +207,7 @@ func (uc *Usecase) updateOrder(ctx context.Context, order *entities.Order) {
 			uc.log.Error(fmt.Sprintf("updateOrder:Done [%+v] error: %v", *order, ctx.Err()))
 			return
 		default:
+			uc.log.Info(fmt.Sprintf("updateOrder [%+v]", *order))
 			order.UpdateTS = entities.TS()
 			if err := uc.order.UpdateOrder(ctx, order); err != nil {
 				uc.log.Error(fmt.Sprintf("updateOrder:UpdateOrder [%+v] error: %v", *order, err))

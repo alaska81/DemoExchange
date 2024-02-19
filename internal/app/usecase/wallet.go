@@ -30,9 +30,9 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 	}
 
 	for coin, balance := range balances {
-		free := balance.Total - balance.Hold
-		balance.AvailableBalance = free
-		balance.WalletBalance = free
+		available := balance.Total - balance.Hold
+		balance.AvailableBalance = available
+		balance.WalletBalance = available
 		balances[coin] = balance
 	}
 
@@ -45,8 +45,9 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 		coins := p.Symbol.GetCoins()
 
 		if balance, ok := balances[coins.CoinBase]; ok {
-			balance.WalletBalance += p.Margin
-			balance.MarginBalance += p.MarginBalance
+			balance.InitialMargin += p.Margin
+			balance.WalletBalance += p.Margin        // available + margin
+			balance.MarginBalance += p.MarginBalance // margin + pnl
 			balance.UnrealisedPnl += p.UnrealisedPnl
 			balances[coins.CoinBase] = balance
 		}
@@ -73,8 +74,13 @@ func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, a
 			return err
 		}
 
-		if balances[coin].Total+amount > uc.getBalanceLimit(coin) {
-			amount = uc.getBalanceLimit(coin) - balances[coin].Total
+		balance, ok := balances[coin]
+		if !ok {
+			return apperror.ErrBalanceNotFound
+		}
+
+		if balance.Total+amount > uc.getBalanceLimit(coin) {
+			amount = uc.getBalanceLimit(coin) - balance.Total
 		}
 
 		if amount <= 0 {
@@ -109,7 +115,12 @@ func (uc *Usecase) SubtractCoin(ctx context.Context, exchange entities.Exchange,
 			return err
 		}
 
-		if balances[coin].Total-amount < 0 {
+		balance, ok := balances[coin]
+		if !ok {
+			return apperror.ErrBalanceNotFound
+		}
+
+		if balance.Total-amount < 0 {
 			return apperror.ErrInsufficientFunds
 		}
 
@@ -134,8 +145,14 @@ func (uc *Usecase) GetBalanceCoin(ctx context.Context, exchange entities.Exchang
 		return
 	}
 
-	total = balances[coin].Total
-	hold = balances[coin].Hold
+	balance, ok := balances[coin]
+	if !ok {
+		err = apperror.ErrBalanceNotFound
+		return
+	}
+
+	total = balance.Total
+	hold = balance.Hold
 
 	return
 }

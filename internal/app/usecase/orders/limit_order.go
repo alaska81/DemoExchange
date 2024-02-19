@@ -38,10 +38,10 @@ func (o *LimitOrder) Process(ctx context.Context) <-chan entities.OrderStatus {
 	go func() {
 		defer func() {
 			close(ch)
-			fmt.Println("LimitOrder.Process: close", o.order)
+			fmt.Printf("LimitOrder.Process:close %+v\n", o.order)
 		}()
 
-		fmt.Println("LimitOrder.Process", o.order)
+		fmt.Printf("LimitOrder.Process %+v\n", o.order)
 		o.order.Status = entities.OrderStatusPending
 		ch <- entities.OrderStatusPending
 

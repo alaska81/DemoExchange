@@ -8,6 +8,7 @@ var (
 	ErrTokenLimitExceeded          = New("Token limit exceeded")
 	ErrRequestError                = New("Request error")
 	ErrBalanceLimitExceeded        = New("Balance limit exceeded")
+	ErrBalanceNotFound             = New("Balance not found")
 	ErrInvalidPositionSide         = New("Invalid position side")
 	ErrInsufficientFunds           = New("Insufficient funds")
 	ErrSetPositionMode             = New("Error set position mode")
