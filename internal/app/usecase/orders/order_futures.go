@@ -48,13 +48,24 @@ func (o *OrderFutures) AppendBalance(ctx context.Context, uc Usecase, log Logger
 	}
 }
 
-func (o *OrderFutures) Validate() error {
+func (o *OrderFutures) Validate(ctx context.Context, markets Markets) error {
 	if o.order.PositionMode == entities.PositionModeOneway {
 		o.order.PositionSide = entities.PositionSideBoth
 	} else {
 		if o.order.PositionSide != entities.PositionSideLong && o.order.PositionSide != entities.PositionSideShort {
 			return apperror.ErrInvalidPositionSide
 		}
+	}
+
+	market, err := markets.GetMarketWithContext(context.Background(), o.order.Exchange.Name(), o.order.Symbol.String())
+	if err != nil {
+		return err
+	}
+
+	limits := market.Limits.Amount
+
+	if limits.Min > 0 && o.order.Amount < limits.Min {
+		return apperror.ErrAmountIsOutOfRange
 	}
 
 	return nil

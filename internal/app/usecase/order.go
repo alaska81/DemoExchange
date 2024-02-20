@@ -26,7 +26,7 @@ func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 	if err != nil {
 		return err
 	}
-	if err := order.Validate(); err != nil {
+	if err := order.Validate(ctx); err != nil {
 		return err
 	}
 

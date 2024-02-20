@@ -5,10 +5,12 @@ import (
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/markets"
 )
 
 type Order struct {
-	order *entities.Order
+	order   *entities.Order
+	markets Markets
 }
 
 func NewOrder(ctx context.Context, uc Usecase, o *entities.Order) (*Order, error) {
@@ -20,7 +22,7 @@ func NewOrder(ctx context.Context, uc Usecase, o *entities.Order) (*Order, error
 		o.PositionMode = account.PositionMode
 	}
 
-	return &Order{o}, nil
+	return &Order{o, markets.New()}, nil
 }
 
 func (o *Order) GetOrder() *entities.Order {
@@ -60,7 +62,7 @@ func (o *Order) AppendBalance(ctx context.Context, uc Usecase, log Logger) error
 	}
 }
 
-func (o *Order) Validate() error {
+func (o *Order) Validate(ctx context.Context) error {
 	if o.order.Exchange != entities.ExchangeSpot && o.order.Exchange != entities.ExchangeFutures {
 		return apperror.ErrExchangeIsNotValid
 	}
@@ -94,11 +96,15 @@ func (o *Order) Validate() error {
 		return err
 	}
 
-	if o.order.Exchange == entities.ExchangeFutures {
-		return NewOrderFutures(o.order).Validate()
+	switch o.order.Exchange {
+	case entities.ExchangeFutures:
+		err = NewOrderFutures(o.order).Validate(ctx, o.markets)
+
+	case entities.ExchangeSpot:
+		err = NewOrderSpot(o.order).Validate(ctx, o.markets)
 	}
 
-	return nil
+	return err
 }
 
 func (o *Order) Process(ctx context.Context) (<-chan entities.OrderStatus, error) {

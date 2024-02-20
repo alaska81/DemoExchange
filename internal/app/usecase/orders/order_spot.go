@@ -46,3 +46,18 @@ func (o *OrderSpot) AppendBalance(ctx context.Context, uc Usecase, log Logger) e
 		return apperror.ErrOrderSideIsNotValid
 	}
 }
+
+func (o *OrderSpot) Validate(ctx context.Context, markets Markets) error {
+	market, err := markets.GetMarketWithContext(context.Background(), o.order.Exchange.Name(), o.order.Symbol.String())
+	if err != nil {
+		return err
+	}
+
+	limits := market.Limits.Amount
+
+	if limits.Min > 0 && o.order.Amount < limits.Min {
+		return apperror.ErrAmountIsOutOfRange
+	}
+
+	return nil
+}

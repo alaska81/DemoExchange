@@ -20,6 +20,7 @@ var (
 	ErrExchangeIsNotValid          = New("Exchange is not valid")
 	ErrSymbolIsNotValid            = New("Symbol is not valid")
 	ErrAmountIsNotValid            = New("Amount is not valid")
+	ErrAmountIsOutOfRange          = New("Amount is out of range")
 	ErrPriceIsNotValid             = New("Price is not valid")
 	ErrMarketPriceIsWrong          = New("Market price is wrong")
 	ErrOrderTypeNotValid           = New("Order Type not valid")

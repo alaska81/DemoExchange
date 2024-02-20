@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/markets"
 	"DemoExchange/internal/app/tickers"
 )
 
@@ -31,6 +32,10 @@ type Usecase interface {
 
 type Tickers interface {
 	GetTickerWithContext(ctx context.Context, exchange, market string) (tickers.Ticker, error)
+}
+
+type Markets interface {
+	GetMarketWithContext(ctx context.Context, exchange, market string) (markets.Market, error)
 }
 
 type Logger interface {
