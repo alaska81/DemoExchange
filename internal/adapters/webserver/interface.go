@@ -40,6 +40,8 @@ type Usecase interface {
 	PositionsList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
 	SetPositionMarginType(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, marginType entities.MarginType) error
 	SetPositionLeverage(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, leverage entities.PositionLeverage) error
+
+	TransactionsList(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, filter entities.TransactionFilter) ([]*entities.Transaction, error)
 }
 
 type Logger interface {

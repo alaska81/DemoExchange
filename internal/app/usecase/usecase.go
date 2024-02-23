@@ -9,6 +9,7 @@ import (
 	"DemoExchange/internal/app/usecase/repo/apikey"
 	"DemoExchange/internal/app/usecase/repo/order"
 	"DemoExchange/internal/app/usecase/repo/position"
+	"DemoExchange/internal/app/usecase/repo/transaction"
 	"DemoExchange/internal/app/usecase/repo/wallet"
 )
 
@@ -26,6 +27,7 @@ type Usecase struct {
 	wallet         WalletStorage
 	order          OrderStorage
 	position       PositionStorage
+	transaction    TransactionStorage
 	cacheOrders    Cache
 	cachePositions Cache
 	log            Logger
@@ -40,6 +42,7 @@ func New(cfg Config, repo Connection, log Logger) *Usecase {
 	wallet := wallet.New(repo)
 	order := order.New(repo)
 	position := position.New(repo)
+	transaction := transaction.New(repo)
 
 	return &Usecase{
 		cfg,
@@ -48,6 +51,7 @@ func New(cfg Config, repo Connection, log Logger) *Usecase {
 		wallet,
 		order,
 		position,
+		transaction,
 		cache.New("orders"),
 		cache.New("positions"),
 		log,

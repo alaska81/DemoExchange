@@ -61,6 +61,12 @@ type PositionStorage interface {
 	SelectOpenPositions(ctx context.Context) ([]*entities.Position, error)
 }
 
+type TransactionStorage interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	InsertTransaction(ctx context.Context, transaction *entities.Transaction) error
+	SelectAccountTransactions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, filter entities.TransactionFilter) ([]*entities.Transaction, error)
+}
+
 type Cache interface {
 	Set(uid string, value any)
 	Get(uid string) (any, bool)

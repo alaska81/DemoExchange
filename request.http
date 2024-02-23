@@ -241,3 +241,8 @@ token: db936be21e11e5df735b20a802a0a250266dc6e7
     "symbol": "BTC/USDT",
     "leverage": 5
 }
+
+### 
+GET http://localhost:44444/v1/transaction/list?exchange=demo_futures HTTP/1.1
+content-type: application/json
+token: 024e5a544c031305a7a96552d0f80620217c26a3

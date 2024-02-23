@@ -231,7 +231,7 @@ func (uc *Usecase) SavePosition(ctx context.Context, position *entities.Position
 	return nil
 }
 
-func (uc *Usecase) updatePosition(ctx context.Context, position *entities.Position) {
+func (uc *Usecase) updatePosition(ctx context.Context, position *entities.Position) error {
 	ctx, cancel := context.WithTimeout(ctx, TimeoutUpdate)
 	defer cancel()
 
@@ -239,7 +239,7 @@ func (uc *Usecase) updatePosition(ctx context.Context, position *entities.Positi
 		select {
 		case <-ctx.Done():
 			uc.log.Error(fmt.Sprintf("updatePosition:Done [%+v] error: %v", *position, ctx.Err()))
-			return
+			return ctx.Err()
 		default:
 			position.UpdateTS = entities.TS()
 			if err := uc.position.UpdatePosition(ctx, position); err != nil {
@@ -247,7 +247,7 @@ func (uc *Usecase) updatePosition(ctx context.Context, position *entities.Positi
 				time.Sleep(TimeoutRetry)
 				continue
 			}
-			return
+			return nil
 		}
 	}
 }
@@ -341,12 +341,25 @@ func (uc *Usecase) checkPositionLiquidation(ctx context.Context, position *entit
 	position.Calc(ticker.Last)
 
 	if position.MarginBalance <= 0 {
-		position.Amount = 0
-		position.HoldAmount = 0
-		position.Margin = 0
+		err := uc.position.WithTx(ctx, func(ctx context.Context) error {
+			position.Amount = 0
+			position.HoldAmount = 0
+			position.Margin = 0
+			if err := uc.updatePosition(ctx, position); err != nil {
+				uc.log.Error(fmt.Sprintf("checkPositionLiquidation:updatePosition [%+v] error: %v", *position, err))
+				return err
+			}
 
-		uc.updatePosition(ctx, position)
-		return true
+			transaction := entities.NewTransaction(position.AccountUID, position.Exchange, position.Symbol, entities.TransactionTypeLiquidation, position.Amount)
+			if err := uc.AppendTransaction(ctx, transaction); err != nil {
+				uc.log.Error(fmt.Sprintf("checkPositionLiquidation:AppendTransaction [%+v] error: %v", *transaction, err))
+				return err
+			}
+
+			return nil
+		})
+
+		return err == nil
 	}
 
 	return false

@@ -72,6 +72,10 @@ func (r *Routes) Handler() http.Handler {
 	position.POST("/type", r.postPositionTypeHandler)
 	position.POST("/leverage", r.postPositionLeverageHandler)
 
+	transaction := v1.Group("/transaction")
+	transaction.Use(r.authTokenMiddleware())
+	transaction.GET("/list", r.getTransactionListHandler)
+
 	return g
 }
 
@@ -135,11 +139,10 @@ func (r *Routes) getMarketTickersHandler(c *gin.Context) {
 }
 
 func (r *Routes) getMarketOrderbookHandler(c *gin.Context) {
-	ctx := c.Request.Context()
 	exchange := entities.Exchange(c.Query("exchange"))
 	symbol := c.Query("symbol")
 	limit := c.DefaultQuery("limit", "100")
-	result, err := r.orderbook.GetOrderbook(ctx, exchange.Name(), symbol, limit)
+	result, err := r.orderbook.GetOrderbook(c.Request.Context(), exchange.Name(), symbol, limit)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -175,8 +178,7 @@ func (r *Routes) postAPIKeyCreateHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	result, err := r.usecase.CreateToken(ctx, req.Service, req.UserID)
+	result, err := r.usecase.CreateToken(c.Request.Context(), req.Service, req.UserID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -203,8 +205,7 @@ func (r *Routes) postAPIKeyDisableHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	err := r.usecase.DisableToken(ctx, entities.Token(req.Token))
+	err := r.usecase.DisableToken(c.Request.Context(), entities.Token(req.Token))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -221,7 +222,6 @@ func (r *Routes) postAPIKeyDisableHandler(c *gin.Context) {
 }
 
 func (r *Routes) getWalletBalancesHandler(c *gin.Context) {
-	ctx := c.Request.Context()
 	exchange := c.Query("exchange")
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
@@ -233,7 +233,7 @@ func (r *Routes) getWalletBalancesHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := r.usecase.GetBalances(ctx, entities.Exchange(exchange), accountUID.(entities.AccountUID))
+	result, err := r.usecase.GetBalances(c.Request.Context(), entities.Exchange(exchange), accountUID.(entities.AccountUID))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -260,8 +260,6 @@ func (r *Routes) postWalletDepositHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -272,7 +270,7 @@ func (r *Routes) postWalletDepositHandler(c *gin.Context) {
 		return
 	}
 
-	amount, err := r.usecase.Deposit(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Coin(req.Coin), req.Amount)
+	amount, err := r.usecase.Deposit(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Coin(req.Coin), req.Amount)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -299,8 +297,6 @@ func (r *Routes) postWalletWithdrawHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -311,7 +307,7 @@ func (r *Routes) postWalletWithdrawHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.Withdraw(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Coin(req.Coin), req.Amount)
+	err := r.usecase.Withdraw(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Coin(req.Coin), req.Amount)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -337,8 +333,6 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -358,7 +352,7 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 	order.Amount = req.Amount
 	order.Price = req.Price
 
-	err := r.usecase.NewOrder(ctx, order)
+	err := r.usecase.NewOrder(c.Request.Context(), order)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -379,8 +373,6 @@ func (r *Routes) getOrderGetHandler(c *gin.Context) {
 	exchange := c.Query("exchange")
 	orderUID := c.Query("order_uid")
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -391,7 +383,7 @@ func (r *Routes) getOrderGetHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := r.usecase.GetOrder(ctx, entities.Exchange(exchange), accountUID.(entities.AccountUID), orderUID)
+	result, err := r.usecase.GetOrder(c.Request.Context(), entities.Exchange(exchange), accountUID.(entities.AccountUID), orderUID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -418,8 +410,6 @@ func (r *Routes) postOrderCancelHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -430,7 +420,7 @@ func (r *Routes) postOrderCancelHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := r.usecase.CancelOrder(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), req.OrderUID)
+	result, err := r.usecase.CancelOrder(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), req.OrderUID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -451,8 +441,6 @@ func (r *Routes) getOrderListHandler(c *gin.Context) {
 	exchange := c.Query("exchange")
 	queryStatus := strings.ToLower(c.Query("status"))
 	queryLimit := c.DefaultQuery("limit", "100")
-
-	ctx := c.Request.Context()
 
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
@@ -482,7 +470,7 @@ func (r *Routes) getOrderListHandler(c *gin.Context) {
 		statuses = []entities.OrderStatus{entities.OrderStatusSuccess, entities.OrderStatusCancelled, entities.OrderStatusFailed}
 	}
 
-	result, err := r.usecase.OrdersList(ctx, entities.Exchange(exchange), accountUID.(entities.AccountUID), statuses, limit)
+	result, err := r.usecase.OrdersList(c.Request.Context(), entities.Exchange(exchange), accountUID.(entities.AccountUID), statuses, limit)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -512,9 +500,7 @@ func (r *Routes) getPositionListHandler(c *gin.Context) {
 
 	exchange := c.Query("exchange")
 
-	ctx := c.Request.Context()
-
-	result, err := r.usecase.PositionsList(ctx, entities.Exchange(exchange), accountUID.(entities.AccountUID))
+	result, err := r.usecase.PositionsList(c.Request.Context(), entities.Exchange(exchange), accountUID.(entities.AccountUID))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -541,8 +527,6 @@ func (r *Routes) postPositionModeHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -553,7 +537,7 @@ func (r *Routes) postPositionModeHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetAccountPositionMode(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.PositionMode(req.Mode))
+	err := r.usecase.SetAccountPositionMode(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.PositionMode(req.Mode))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -579,8 +563,6 @@ func (r *Routes) postPositionTypeHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -591,7 +573,7 @@ func (r *Routes) postPositionTypeHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetPositionMarginType(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.MarginType(req.Type))
+	err := r.usecase.SetPositionMarginType(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.MarginType(req.Type))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -617,8 +599,6 @@ func (r *Routes) postPositionLeverageHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-
 	accountUID, exists := c.Get("accountUID")
 	if !exists {
 		c.JSON(http.StatusOK, gin.H{
@@ -629,7 +609,7 @@ func (r *Routes) postPositionLeverageHandler(c *gin.Context) {
 		return
 	}
 
-	err := r.usecase.SetPositionLeverage(ctx, entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.PositionLeverage(req.Leverage))
+	err := r.usecase.SetPositionLeverage(c.Request.Context(), entities.Exchange(req.Exchange), accountUID.(entities.AccountUID), entities.Symbol(req.Symbol), entities.PositionLeverage(req.Leverage))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -641,6 +621,71 @@ func (r *Routes) postPositionLeverageHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"time":    time.Now().Format("2006-01-02 15:04:05"),
+	})
+}
+
+func (r *Routes) getTransactionListHandler(c *gin.Context) {
+	accountUID, exists := c.Get("accountUID")
+	if !exists {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   "Token not found",
+			"time":    time.Now().Format("2006-01-02 15:04:05"),
+		})
+		return
+	}
+
+	exchange := c.Query("exchange")
+
+	queryFrom := c.Query("from")
+	queryTo := c.Query("to")
+	queryLimit := c.Query("limit")
+
+	var from, to, limit int64
+	var err error
+
+	if queryFrom != "" {
+		from, err = strconv.ParseInt(queryFrom, 10, 64)
+	}
+
+	if queryTo != "" {
+		to, err = strconv.ParseInt(queryTo, 10, 64)
+	}
+
+	if queryLimit != "" {
+		limit, err = strconv.ParseInt(queryLimit, 10, 64)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"time":    time.Now().Format("2006-01-02 15:04:05"),
+		})
+		return
+	}
+
+	filter := entities.TransactionFilter{
+		TransactionType: c.Query("type"),
+		From:            from,
+		To:              to,
+		Limit:           limit,
+	}
+
+	result, err := r.usecase.TransactionsList(c.Request.Context(), entities.Exchange(exchange), accountUID.(entities.AccountUID), filter)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"time":    time.Now().Format("2006-01-02 15:04:05"),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"return":  result,
 		"time":    time.Now().Format("2006-01-02 15:04:05"),
 	})
 }
