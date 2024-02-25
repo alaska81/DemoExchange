@@ -1,8 +1,10 @@
 package orders
 
 import (
-	"DemoExchange/internal/app/entities"
 	"context"
+
+	"DemoExchange/internal/app/apperror"
+	"DemoExchange/internal/app/entities"
 )
 
 type OrderFuturesHedge struct {
@@ -11,6 +13,27 @@ type OrderFuturesHedge struct {
 
 func NewOrderFuturesHedge(o *entities.Order) *OrderFuturesHedge {
 	return &OrderFuturesHedge{o}
+}
+
+func (o *OrderFuturesHedge) Validate(ctx context.Context, markets Markets) error {
+	if o.order.PositionSide != entities.PositionSideLong && o.order.PositionSide != entities.PositionSideShort {
+		return apperror.ErrInvalidPositionSide
+	}
+
+	if (o.order.PositionSide == entities.PositionSideLong && o.order.Side == entities.OrderSideBuy) || (o.order.PositionSide == entities.PositionSideShort && o.order.Side == entities.OrderSideSell) {
+		market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
+		if err != nil {
+			return err
+		}
+
+		limits := market.Limits.Amount
+
+		if limits.Min > 0 && o.order.Amount < limits.Min {
+			return apperror.ErrAmountIsOutOfRange
+		}
+	}
+
+	return nil
 }
 
 func (o *OrderFuturesHedge) HoldBalance(ctx context.Context, uc Usecase, log Logger) error {

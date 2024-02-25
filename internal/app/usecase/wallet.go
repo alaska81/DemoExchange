@@ -36,7 +36,7 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 		balances[coin] = balance
 	}
 
-	positions, err := uc.PositionsList(ctx, exchange, accountUID)
+	positions, err := uc.position.SelectAccountOpenPositions(ctx, exchange, accountUID)
 	if err != nil {
 		return nil, err
 	}

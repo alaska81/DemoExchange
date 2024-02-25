@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 
-	"DemoExchange/internal/app/entities"
-	"DemoExchange/internal/app/usecase/orders"
-
 	"github.com/jackc/pgx/v5"
+
+	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/markets"
+	"DemoExchange/internal/app/tickers"
+	"DemoExchange/internal/app/usecase/orders"
 )
 
 type Connection interface {
@@ -67,16 +69,11 @@ type TransactionStorage interface {
 	SelectAccountTransactions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, filter entities.TransactionFilter) ([]*entities.Transaction, error)
 }
 
-type Cache interface {
-	Set(uid string, value any)
-	Get(uid string) (any, bool)
-	Delete(uid string)
-	List() []any
-}
-
-type Logger interface {
-	Info(args ...interface{})
-	Error(args ...interface{})
+type Cache[K comparable, V any] interface {
+	Set(uid K, value V)
+	Get(uid K) (value V, ok bool)
+	Delete(uid K)
+	List() []V
 }
 
 type Order interface {
@@ -86,4 +83,19 @@ type Order interface {
 	HoldBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
 	UnholdBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
 	AppendBalance(ctx context.Context, uc orders.Usecase, log orders.Logger) error
+}
+
+type Tickers interface {
+	GetTickers(exchange string) (tickers.Tickers, error)
+	GetTickerWithContext(ctx context.Context, exchange, market string) (tickers.Ticker, error)
+}
+
+type Markets interface {
+	GetMarket(exchange, market string) (markets.Market, error)
+	GetMarketWithContext(ctx context.Context, exchange, market string) (markets.Market, error)
+}
+
+type Logger interface {
+	Info(args ...interface{})
+	Error(args ...interface{})
 }

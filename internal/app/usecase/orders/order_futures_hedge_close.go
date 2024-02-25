@@ -104,9 +104,12 @@ func (o *OrderFuturesHedgeClose) AppendBalance(ctx context.Context, uc Usecase, 
 
 	cost := o.order.Amount * o.order.Price
 
+	o.order.Fee = cost * OrderFuturesFee
+	o.order.FeeCoin = coin
+
 	balance := entities.Balance{
 		Coin:  coin,
-		Total: cost,
+		Total: cost - o.order.Fee,
 	}
 
 	err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, balance)

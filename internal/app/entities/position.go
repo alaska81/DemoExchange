@@ -55,6 +55,15 @@ const (
 	PositionSideBoth  PositionSide = "both"
 )
 
+func (s PositionSide) PositionMode() PositionMode {
+	switch s {
+	case PositionSideLong, PositionSideShort:
+		return PositionModeHedge
+	default:
+		return PositionModeOneway
+	}
+}
+
 var sides = map[PositionMode][]PositionSide{
 	PositionModeOneway: {PositionSideBoth},
 	PositionModeHedge:  {PositionSideLong, PositionSideShort},
@@ -82,7 +91,11 @@ func NewPosition(account *Account, exchange Exchange, symbol Symbol, positionSid
 	}
 }
 
-func (p *Position) Calc(price float64) {
+func (p *Position) CalcMarginBalance(price float64) {
+	if p.Amount == 0 {
+		return
+	}
+
 	leverage := float64(p.Leverage)
 
 	p.MarkPrice = price
@@ -90,20 +103,54 @@ func (p *Position) Calc(price float64) {
 	if p.Mode == PositionModeHedge {
 		if p.Side == PositionSideLong {
 			p.UnrealisedPnl = p.Amount*p.MarkPrice - p.Margin*leverage
-			p.LiquidationPrice = p.Price * (1 - 1/leverage)
 		} else {
 			p.UnrealisedPnl = p.Margin*leverage - p.Amount*p.MarkPrice
-			p.LiquidationPrice = p.Price * (1 + 1/leverage)
 		}
 	} else {
 		if p.Amount > 0 {
 			p.UnrealisedPnl = p.Amount*p.MarkPrice - p.Margin*leverage
-			p.LiquidationPrice = p.Price * (1 - 1/leverage)
 		} else {
 			p.UnrealisedPnl = p.Margin*leverage + p.Amount*p.MarkPrice
-			p.LiquidationPrice = p.Price * (1 + 1/leverage)
 		}
 	}
 
 	p.MarginBalance = p.Margin + p.UnrealisedPnl
+}
+
+func (p *Position) CalcLiquidationPrice(balance float64) {
+	if p.Amount == 0 {
+		return
+	}
+
+	leverage := float64(p.Leverage)
+
+	if p.MarginType == MarginTypeIsolated {
+		if p.Mode == PositionModeHedge {
+			if p.Side == PositionSideLong {
+				p.LiquidationPrice = p.Price * (1 - 1/leverage)
+			} else {
+				p.LiquidationPrice = p.Price * (1 + 1/leverage)
+			}
+		} else {
+			if p.Amount > 0 {
+				p.LiquidationPrice = p.Price * (1 - 1/leverage)
+			} else {
+				p.LiquidationPrice = p.Price * (1 + 1/leverage)
+			}
+		}
+	} else {
+		if p.Mode == PositionModeHedge {
+			if p.Side == PositionSideLong {
+				p.LiquidationPrice = p.Price - (balance + (balance-p.Margin)*(1-p.Margin/balance)*leverage)
+			} else {
+				p.LiquidationPrice = p.Price + (balance + (balance-p.Margin)*(1-p.Margin/balance)*leverage)
+			}
+		} else {
+			if p.Amount > 0 {
+				p.LiquidationPrice = p.Price - (balance + (balance-p.Margin)*(1-p.Margin/balance)*leverage)
+			} else {
+				p.LiquidationPrice = p.Price + (balance + (balance-p.Margin)*(1-p.Margin/balance)*leverage)
+			}
+		}
+	}
 }

@@ -118,9 +118,14 @@ func (o *OrderSpotSell) AppendBalance(ctx context.Context, uc Usecase, log Logge
 		return err
 	}
 
+	cost := o.order.Amount * o.order.Price
+
+	o.order.Fee = cost * OrderSpotFee
+	o.order.FeeCoin = coins.CoinBase
+
 	appendBalance := entities.Balance{
 		Coin:  coins.CoinBase,
-		Total: o.order.Amount * o.order.Price,
+		Total: cost - o.order.Fee,
 	}
 
 	err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, appendBalance)

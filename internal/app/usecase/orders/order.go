@@ -5,7 +5,11 @@ import (
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
-	"DemoExchange/internal/app/markets"
+)
+
+const (
+	OrderSpotFee    = 0.001
+	OrderFuturesFee = 0.0004
 )
 
 type Order struct {
@@ -13,16 +17,8 @@ type Order struct {
 	markets Markets
 }
 
-func NewOrder(ctx context.Context, uc Usecase, o *entities.Order) (*Order, error) {
-	if o.Exchange == entities.ExchangeFutures {
-		account, err := uc.GetAccountByUID(ctx, o.AccountUID)
-		if err != nil {
-			return nil, err
-		}
-		o.PositionMode = account.PositionMode
-	}
-
-	return &Order{o, markets.New()}, nil
+func NewOrder(ctx context.Context, markets Markets, order *entities.Order) (*Order, error) {
+	return &Order{order, markets}, nil
 }
 
 func (o *Order) GetOrder() *entities.Order {

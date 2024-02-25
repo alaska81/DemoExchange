@@ -132,7 +132,13 @@ func (o *OrderFuturesHedgeOpen) AppendBalance(ctx context.Context, uc Usecase, l
 		position.Price = (position.Price + o.order.Price) / 2
 	}
 
-	position.Amount += o.order.Amount
+	o.order.Fee = cost * OrderFuturesFee
+	o.order.FeeCoin = coin
+
+	fee := o.order.Amount * OrderFuturesFee
+	amount := o.order.Amount - fee
+
+	position.Amount += amount
 	position.Margin = position.Amount * position.Price / float64(position.Leverage)
 
 	position.UpdateTS = o.order.UpdateTS

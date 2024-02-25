@@ -21,6 +21,8 @@ type Order struct {
 	UpdateTS     int64        `json:"update_ts" db:"update_ts"`
 	PositionSide PositionSide `json:"position_side" db:"position_side"`
 	PositionMode PositionMode `json:"position_mode" db:"position_mode"`
+	Fee          float64      `json:"fee" db:"fee"`
+	FeeCoin      Coin         `json:"fee_coin" db:"fee_coin"`
 }
 
 type Orders []Order

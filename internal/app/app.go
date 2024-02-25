@@ -81,7 +81,7 @@ func New() (*App, error) {
 	tickers := tickers.New()
 	markets := markets.New()
 
-	usecase := usecase.New(cfgUsecase, repo, log)
+	usecase := usecase.New(cfgUsecase, repo, tickers, markets, log)
 
 	webserver, err := webserver.New(
 		webserver.Config{

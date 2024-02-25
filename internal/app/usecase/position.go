@@ -22,6 +22,12 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 		return nil, err
 	}
 
+	balances, err := uc.GetBalances(ctx, exchange, accountUID)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("PositionsList:GetBalances [AccountUID: %s] error: %v", accountUID, err))
+		return nil, err
+	}
+
 	tickers, err := uc.tickers.GetTickers(exchange.Name())
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("PositionsList:GetTickers [exchange: %s] error: %v", exchange.Name(), err))
@@ -53,6 +59,8 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 
 	for _, ticker := range tickers {
 		symbol := entities.Symbol(ticker.Symbol)
+		coins := symbol.GetCoins()
+		balance := balances[coins.CoinBase].WalletBalance
 
 		if account.PositionMode == entities.PositionModeOneway {
 			position, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideBoth}]
@@ -60,7 +68,8 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				position = entities.NewPosition(account, exchange, symbol, entities.PositionSideBoth)
 			}
 
-			position.Calc(ticker.Last)
+			position.CalcMarginBalance(ticker.Last)
+			position.CalcLiquidationPrice(balance)
 			result = append(result, position)
 		} else {
 			positionLong, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideLong}]
@@ -68,7 +77,8 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				positionLong = entities.NewPosition(account, exchange, symbol, entities.PositionSideLong)
 			}
 
-			positionLong.Calc(ticker.Last)
+			positionLong.CalcMarginBalance(ticker.Last)
+			positionLong.CalcLiquidationPrice(balance)
 			result = append(result, positionLong)
 
 			positionShort, ok := mapPositions[key{symbol: symbol, side: entities.PositionSideShort}]
@@ -76,7 +86,8 @@ func (uc *Usecase) PositionsList(ctx context.Context, exchange entities.Exchange
 				positionShort = entities.NewPosition(account, exchange, symbol, entities.PositionSideShort)
 			}
 
-			positionShort.Calc(ticker.Last)
+			positionShort.CalcMarginBalance(ticker.Last)
+			positionShort.CalcLiquidationPrice(balance)
 			result = append(result, positionShort)
 		}
 	}
@@ -264,18 +275,15 @@ func (uc *Usecase) ProcessPositions(ctx context.Context) {
 
 			go func(position *entities.Position) {
 				muPositionProcess.Lock()
-				value, ok := uc.cachePositions.Get(position.PositionUID)
+				old, ok := uc.cachePositions.Get(position.PositionUID)
 				if ok {
-					old, ok := value.(*entities.Position)
-					if ok {
-						old.Amount = position.Amount
-						old.Price = position.Price
-						old.Margin = position.Margin
-						old.HoldAmount = position.HoldAmount
-						old.UpdateTS = position.UpdateTS
-						muPositionProcess.Unlock()
-						return
-					}
+					old.Amount = position.Amount
+					old.Price = position.Price
+					old.Margin = position.Margin
+					old.HoldAmount = position.HoldAmount
+					old.UpdateTS = position.UpdateTS
+					muPositionProcess.Unlock()
+					return
 				}
 				muPositionProcess.Unlock()
 
@@ -338,7 +346,7 @@ func (uc *Usecase) checkPositionLiquidation(ctx context.Context, position *entit
 		return false
 	}
 
-	position.Calc(ticker.Last)
+	position.CalcMarginBalance(ticker.Last)
 
 	if position.MarginBalance <= 0 {
 		err := uc.position.WithTx(ctx, func(ctx context.Context) error {

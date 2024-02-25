@@ -22,10 +22,19 @@ var muOrder = &sync.RWMutex{}
 func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 	var err error
 
-	order, err := orders.NewOrder(ctx, uc, o)
+	if o.Exchange == entities.ExchangeFutures {
+		account, err := uc.GetAccountByUID(ctx, o.AccountUID)
+		if err != nil {
+			return err
+		}
+		o.PositionMode = account.PositionMode
+	}
+
+	order, err := orders.NewOrder(ctx, uc.markets, o)
 	if err != nil {
 		return err
 	}
+
 	if err := order.Validate(ctx); err != nil {
 		return err
 	}
@@ -137,7 +146,11 @@ func (uc *Usecase) ProcessPendingOrders(ctx context.Context) error {
 	uc.log.Info("ProcessPendingOrders: ", len(pendingOrders))
 
 	for _, o := range pendingOrders {
-		order, err := orders.NewOrder(ctx, uc, o)
+		if o.Exchange == entities.ExchangeFutures {
+			o.PositionMode = o.PositionSide.PositionMode()
+		}
+
+		order, err := orders.NewOrder(ctx, uc.markets, o)
 		if err != nil {
 			return err
 		}
@@ -162,14 +175,7 @@ func (uc *Usecase) GetOrder(ctx context.Context, exchange entities.Exchange, acc
 }
 
 func (uc *Usecase) CancelOrder(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, orderUID string) (*entities.Order, error) {
-	value, ok := uc.cacheOrders.Get(orderUID)
-	if !ok {
-		err := apperror.ErrOrderNotFound
-		uc.log.Error(fmt.Sprintf("CancelOrder:Get [account_uid: %v] [order_uid: %v] error: %v", accountUID, orderUID, err))
-		return nil, err
-	}
-
-	order, ok := value.(*entities.Order)
+	order, ok := uc.cacheOrders.Get(orderUID)
 	if !ok {
 		err := apperror.ErrOrderNotFound
 		uc.log.Error(fmt.Sprintf("CancelOrder:Get [account_uid: %v] [order_uid: %v] error: %v", accountUID, orderUID, err))

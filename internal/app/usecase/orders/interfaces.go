@@ -8,6 +8,14 @@ import (
 	"DemoExchange/internal/app/tickers"
 )
 
+type Usecase interface {
+	Account
+	Balance
+	Position
+	Tickers
+	Markets
+}
+
 type Account interface {
 	GetAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error)
 }
@@ -22,12 +30,6 @@ type Balance interface {
 type Position interface {
 	GetPositionBySide(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
 	SavePosition(ctx context.Context, position *entities.Position) error
-}
-
-type Usecase interface {
-	Account
-	Balance
-	Position
 }
 
 type Tickers interface {

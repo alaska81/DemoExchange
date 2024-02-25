@@ -94,12 +94,12 @@ content-type: application/json
 token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 {
-    "exchange": "demo_spot",
+    "exchange": "demo_futures",
     "symbol": "BTC/USDT",
     "type": "market",
     "position_side": "long",
     "side": "buy",
-    "amount": 0.000001
+    "amount": 0.01
 }
 
 ### 
@@ -119,7 +119,7 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 
 ### 
-GET http://localhost:44444/v1/order/get?exchange=demo_futures&order_uid=a4bc9ea5-8695-42a1-9b22-64824be77d09 HTTP/1.1
+GET http://localhost:44444/v1/order/get?exchange=demo_spot&order_uid=df59c7e0-cfac-49b2-9cb5-9181a96d9dd0 HTTP/1.1
 content-type: application/json
 token: 024e5a544c031305a7a96552d0f80620217c26a3
 
@@ -136,7 +136,7 @@ content-type: application/json
 token: 024e5a544c031305a7a96552d0f80620217c26a3
 
 {
-    "order_uid": "0a3024a5-f3ba-4b67-a918-996ff2726936"
+    "order_uid": "a5b79ae2-d221-4b79-b360-f2c6597d1ca8"
 }
 
 ### 
@@ -204,7 +204,7 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
 {
     "exchange": "demo_futures",
     "symbol": "BTC/USDT",
-    "type": "isolated"
+    "type": "cross"
 }
 
 ### 

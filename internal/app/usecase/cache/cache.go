@@ -5,55 +5,71 @@ import (
 	"sync"
 )
 
-// type Values[K comparable, V any] map[K]V
-
-type Cache struct {
-	name   string
-	values map[string]any
-	mu     sync.RWMutex
+type Logger interface {
+	Info(args ...interface{})
 }
 
-func New(name string) *Cache {
-	return &Cache{
-		name:   name,
-		values: make(map[string]any),
+type Values[K comparable, V any] map[K]V
+
+// Cache is a generic in-memory cache
+type Cache[K comparable, V any] struct {
+	name   string
+	mu     sync.RWMutex
+	values Values[K, V]
+	log    Logger
+}
+
+// New creates a new instance of Cache
+func New[K comparable, V any](log Logger) *Cache[K, V] {
+	return &Cache[K, V]{
+		name:   fmt.Sprintf("%T", *new(V)),
 		mu:     sync.RWMutex{},
+		values: make(Values[K, V]),
+		log:    log,
 	}
 }
 
-func (s *Cache) Set(uid string, value any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// Set adds value to cache
+func (c *Cache[K, V]) Set(uid K, value V) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	s.values[uid] = value
-	fmt.Printf("Cache [%s] Add: %s\n", s.name, uid)
+	c.values[uid] = value
+	c.log.Info(fmt.Sprintf("Cache [%s] Set: %v", c.name, uid))
 }
 
-func (s *Cache) Get(uid string) (any, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// Get retrieves a value from cache by uid
+func (c *Cache[K, V]) Get(uid K) (value V, ok bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	value, ok := s.values[uid]
-
-	fmt.Printf("Cache [%s] Get: %s\n", s.name, uid)
-	return value, ok
+	value, ok = c.values[uid]
+	return
 }
 
-func (s *Cache) Delete(uid string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// Delete removes a value from cache by uid
+func (c *Cache[K, V]) Delete(uid K) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	delete(s.values, uid)
-	fmt.Printf("Cache [%s] Delete: %s\n", s.name, uid)
+	_, ok := c.values[uid]
+	if !ok {
+		return
+	}
+
+	delete(c.values, uid)
+	c.log.Info(fmt.Sprintf("Cache [%s] Delete: %v", c.name, uid))
 }
 
-func (s *Cache) List() []any {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// List returns all values from cache
+func (c *Cache[K, V]) List() []V {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	values := make([]any, 0, len(s.values))
-	for _, vakue := range s.values {
-		values = append(values, vakue)
+	values := make([]V, 0, len(c.values))
+
+	for _, value := range c.values {
+		values = append(values, value)
 	}
 
 	return values

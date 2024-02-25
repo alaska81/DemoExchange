@@ -48,7 +48,7 @@ func (o *OrderSpot) AppendBalance(ctx context.Context, uc Usecase, log Logger) e
 }
 
 func (o *OrderSpot) Validate(ctx context.Context, markets Markets) error {
-	market, err := markets.GetMarketWithContext(context.Background(), o.order.Exchange.Name(), o.order.Symbol.String())
+	market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
 	if err != nil {
 		return err
 	}
