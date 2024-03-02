@@ -92,12 +92,20 @@ func (o *Order) Validate(ctx context.Context) error {
 		return err
 	}
 
+	market, err := o.markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
+	if err != nil {
+		return err
+	}
+
+	o.order.Precision = market.Precision.Amount
+	o.order.Limit = market.Limits.Amount.Min
+
 	switch o.order.Exchange {
 	case entities.ExchangeFutures:
-		err = NewOrderFutures(o.order).Validate(ctx, o.markets)
+		err = NewOrderFutures(o.order).Validate()
 
 	case entities.ExchangeSpot:
-		err = NewOrderSpot(o.order).Validate(ctx, o.markets)
+		err = NewOrderSpot(o.order).Validate()
 	}
 
 	return err

@@ -26,7 +26,10 @@ func (o *OrderSpotBuy) HoldBalance(ctx context.Context, uc Usecase, log Logger) 
 		return err
 	}
 
-	cost := o.order.Amount * o.order.Price
+	o.order.Fee = o.order.Amount * OrderSpotFee
+	o.order.FeeCoin = coins.CoinQuote
+
+	cost := (o.order.Amount + o.order.Fee) * o.order.Price
 	hold := balanceHold + cost
 	if hold > balanceTotal {
 		log.Error(fmt.Sprintf("HoldBalance:ErrInsufficientFunds [AccountUID: %s, exchange: %s, coin: %s, balance_total: %v, balance_hold: %v, hold: %v]", o.order.AccountUID, o.order.Exchange, coin, balanceTotal, balanceHold, hold))
@@ -57,7 +60,10 @@ func (o *OrderSpotBuy) UnholdBalance(ctx context.Context, uc Usecase, log Logger
 		return err
 	}
 
-	cost := o.order.Amount * o.order.Price
+	o.order.Fee = o.order.Amount * OrderSpotFee
+	o.order.FeeCoin = coins.CoinQuote
+
+	cost := (o.order.Amount + o.order.Fee) * o.order.Price
 	hold := balanceHold - cost
 
 	if hold > balanceTotal {
@@ -92,7 +98,10 @@ func (o *OrderSpotBuy) AppendBalance(ctx context.Context, uc Usecase, log Logger
 		return err
 	}
 
-	cost := o.order.Amount * o.order.Price
+	o.order.Fee = o.order.Amount * OrderSpotFee
+	o.order.FeeCoin = coins.CoinQuote
+
+	cost := (o.order.Amount + o.order.Fee) * o.order.Price
 	if cost > balanceTotal {
 		log.Error(fmt.Sprintf("AppendBalance:ErrInsufficientFunds [AccountUID: %s, coin: %s, balance_total: %v, cost: %v]", o.order.AccountUID, coin, balanceTotal, cost))
 		return apperror.ErrInsufficientFunds
@@ -121,12 +130,9 @@ func (o *OrderSpotBuy) AppendBalance(ctx context.Context, uc Usecase, log Logger
 		return err
 	}
 
-	o.order.Fee = o.order.Amount * OrderSpotFee
-	o.order.FeeCoin = coins.CoinQuote
-
 	appendBalance := entities.Balance{
 		Coin:  coins.CoinQuote,
-		Total: o.order.Amount - o.order.Fee,
+		Total: o.order.Amount,
 	}
 
 	err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, appendBalance)

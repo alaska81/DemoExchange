@@ -3,6 +3,7 @@ package orders
 import (
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/pkg/precision"
 	"context"
 )
 
@@ -47,15 +48,13 @@ func (o *OrderSpot) AppendBalance(ctx context.Context, uc Usecase, log Logger) e
 	}
 }
 
-func (o *OrderSpot) Validate(ctx context.Context, markets Markets) error {
-	market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
-	if err != nil {
-		return err
+func (o *OrderSpot) Validate() error {
+	o.order.Amount = precision.ToFix(o.order.Amount, o.order.Precision)
+	if o.order.Amount <= 0 {
+		return apperror.ErrAmountIsOutOfRange
 	}
 
-	limits := market.Limits.Amount
-
-	if limits.Min > 0 && o.order.Amount < limits.Min {
+	if o.order.Limit > 0 && o.order.Amount < o.order.Limit {
 		return apperror.ErrAmountIsOutOfRange
 	}
 

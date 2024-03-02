@@ -24,6 +24,9 @@ type Order struct {
 	Fee          float64      `json:"fee" db:"fee"`
 	FeeCoin      Coin         `json:"fee_coin" db:"fee_coin"`
 	ReduceOnly   bool         `json:"reduce_only" db:"reduce_only"`
+
+	Precision int64
+	Limit     float64
 }
 
 type Orders []Order

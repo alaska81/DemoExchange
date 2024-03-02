@@ -6,6 +6,7 @@ import (
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/pkg/precision"
 )
 
 type OrderFuturesHedgeOpen struct {
@@ -14,6 +15,22 @@ type OrderFuturesHedgeOpen struct {
 
 func NewOrderFuturesHedgeOpen(o *entities.Order) *OrderFuturesHedgeOpen {
 	return &OrderFuturesHedgeOpen{o}
+}
+
+func (o *OrderFuturesHedgeOpen) Validate() error {
+	amount := precision.ToFix(o.order.Amount, o.order.Precision)
+
+	if amount <= 0 {
+		return apperror.ErrAmountIsOutOfRange
+	}
+
+	if o.order.Limit > 0 && amount < o.order.Limit {
+		return apperror.ErrAmountIsOutOfRange
+	}
+
+	o.order.Amount = amount
+
+	return nil
 }
 
 func (o *OrderFuturesHedgeOpen) HoldBalance(ctx context.Context, uc Usecase, log Logger) error {
@@ -27,6 +44,12 @@ func (o *OrderFuturesHedgeOpen) HoldBalance(ctx context.Context, uc Usecase, log
 	}
 
 	cost := o.order.Amount * o.order.Price
+
+	o.order.Fee = cost * OrderFuturesFee
+	o.order.FeeCoin = coin
+
+	cost += o.order.Fee
+
 	hold := balanceHold + cost
 	if hold > balanceTotal {
 		log.Error(fmt.Sprintf("HoldBalance:ErrInsufficientFunds [AccountUID: %s, exchange: %s, coin: %s, balance_total: %v, balance_hold: %v, cost: %v]", o.order.AccountUID, o.order.Exchange, coin, balanceTotal, balanceHold, cost))
@@ -58,6 +81,11 @@ func (o *OrderFuturesHedgeOpen) UnholdBalance(ctx context.Context, uc Usecase, l
 	}
 
 	cost := o.order.Amount * o.order.Price
+
+	o.order.Fee = cost * OrderFuturesFee
+	o.order.FeeCoin = coin
+
+	cost += o.order.Fee
 	unhold := balanceHold - cost
 	if unhold > balanceTotal {
 		unhold = balanceTotal
@@ -92,6 +120,11 @@ func (o *OrderFuturesHedgeOpen) AppendBalance(ctx context.Context, uc Usecase, l
 	}
 
 	cost := o.order.Amount * o.order.Price
+
+	o.order.Fee = cost * OrderFuturesFee
+	o.order.FeeCoin = coin
+
+	cost += o.order.Fee
 	if cost > balanceTotal {
 		log.Error(fmt.Sprintf("AppendBalance:ErrInsufficientFunds [AccountUID: %s, coin: %s, balance_total: %v, cost: %v]", o.order.AccountUID, coin, balanceTotal, cost))
 		return apperror.ErrInsufficientFunds
@@ -132,13 +165,7 @@ func (o *OrderFuturesHedgeOpen) AppendBalance(ctx context.Context, uc Usecase, l
 		position.Price = (position.Price + o.order.Price) / 2
 	}
 
-	o.order.Fee = cost * OrderFuturesFee
-	o.order.FeeCoin = coin
-
-	fee := o.order.Amount * OrderFuturesFee
-	amount := o.order.Amount - fee
-
-	position.Amount += amount
+	position.Amount += o.order.Amount
 	position.Margin = position.Amount * position.Price / float64(position.Leverage)
 
 	position.UpdateTS = o.order.UpdateTS

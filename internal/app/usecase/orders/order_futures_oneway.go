@@ -7,6 +7,7 @@ import (
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/pkg/precision"
 )
 
 type OrderFuturesOneway struct {
@@ -17,21 +18,8 @@ func NewOrderFuturesOneway(order *entities.Order) *OrderFuturesOneway {
 	return &OrderFuturesOneway{order}
 }
 
-func (o *OrderFuturesOneway) Validate(ctx context.Context, markets Markets) error {
+func (o *OrderFuturesOneway) Validate() error {
 	o.order.PositionSide = entities.PositionSideBoth
-
-	// if (o.order.Amount > 0 && o.order.Side == entities.OrderSideBuy) || (o.order.Amount < 0 && o.order.Side == entities.OrderSideSell) {
-	// 	market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	limits := market.Limits.Amount
-
-	// 	if limits.Min > 0 && o.order.Amount < limits.Min {
-	// 		return apperror.ErrAmountIsOutOfRange
-	// 	}
-	// }
 
 	return nil
 }
@@ -57,6 +45,30 @@ func (o *OrderFuturesOneway) HoldBalance(ctx context.Context, uc Usecase, log Lo
 
 		return 0
 	}()
+
+	amount := precision.ToFix(o.order.Amount, o.order.Precision)
+
+	if o.order.Side == entities.OrderSideBuy && position.Amount >= 0 || o.order.Side == entities.OrderSideSell && position.Amount <= 0 {
+		if amount <= 0 {
+			return apperror.ErrAmountIsOutOfRange
+		}
+
+		if o.order.Limit > 0 && amount < o.order.Limit {
+			return apperror.ErrAmountIsOutOfRange
+		}
+	} else {
+		if o.order.Limit > 0 && balancePosition-amount < o.order.Limit {
+			amount = o.order.Amount
+			o.order.ReduceOnly = true
+		}
+
+		if amount <= 0 {
+			amount = o.order.Amount
+			o.order.ReduceOnly = true
+		}
+	}
+
+	o.order.Amount = amount
 
 	holdPosition := o.order.Amount
 	if holdPosition > balancePosition {

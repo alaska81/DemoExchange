@@ -6,6 +6,7 @@ import (
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
+	"DemoExchange/internal/app/pkg/precision"
 )
 
 type OrderFuturesHedgeClose struct {
@@ -14,6 +15,11 @@ type OrderFuturesHedgeClose struct {
 
 func NewOrderFuturesHedgeClose(o *entities.Order) *OrderFuturesHedgeClose {
 	return &OrderFuturesHedgeClose{o}
+}
+
+func (o *OrderFuturesHedgeClose) Validate() error {
+
+	return nil
 }
 
 func (o *OrderFuturesHedgeClose) HoldBalance(ctx context.Context, uc Usecase, log Logger) error {
@@ -28,10 +34,22 @@ func (o *OrderFuturesHedgeClose) HoldBalance(ctx context.Context, uc Usecase, lo
 		return apperror.ErrPositionNotFound
 	}
 
-	positionBalance := position.Amount - position.HoldAmount
+	balancePosition := position.Amount - position.HoldAmount
 
-	if o.order.Amount > positionBalance {
-		o.order.Amount = positionBalance
+	amount := precision.ToFix(o.order.Amount, o.order.Precision)
+
+	if o.order.Limit > 0 && balancePosition-amount < o.order.Limit {
+		amount = o.order.Amount
+	}
+
+	if amount <= 0 {
+		amount = o.order.Amount
+	}
+
+	o.order.Amount = amount
+
+	if o.order.Amount > balancePosition {
+		o.order.Amount = balancePosition
 	}
 
 	if o.order.Amount == 0 {

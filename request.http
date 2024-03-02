@@ -99,8 +99,8 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
     "type": "market",
     "position_side": "long",
     "side": "sell",
-    "amount": 0.02,
-    "reduce_only": true
+    "amount": 0.0123345,
+    "reduce_only": false
 }
 
 ### 

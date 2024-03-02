@@ -48,12 +48,12 @@ func (o *OrderFutures) AppendBalance(ctx context.Context, uc Usecase, log Logger
 	}
 }
 
-func (o *OrderFutures) Validate(ctx context.Context, markets Markets) error {
+func (o *OrderFutures) Validate() error {
 	switch o.order.PositionMode {
 	case entities.PositionModeOneway:
-		return NewOrderFuturesOneway(o.order).Validate(ctx, markets)
+		return NewOrderFuturesOneway(o.order).Validate()
 	case entities.PositionModeHedge:
-		return NewOrderFuturesHedge(o.order).Validate(ctx, markets)
+		return NewOrderFuturesHedge(o.order).Validate()
 	default:
 		return apperror.ErrOrderPositionModeIsNotValid
 	}
