@@ -351,6 +351,7 @@ func (r *Routes) postOrderCreateHandler(c *gin.Context) {
 	order.Side = entities.OrderSide(req.Side)
 	order.Amount = req.Amount
 	order.Price = req.Price
+	order.ReduceOnly = req.ReduceOnly
 
 	err := r.usecase.NewOrder(c.Request.Context(), order)
 	if err != nil {

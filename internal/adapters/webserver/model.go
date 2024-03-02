@@ -38,6 +38,7 @@ type OrderCreateRequest struct {
 	Side         string  `json:"side"`
 	Amount       float64 `json:"amount"`
 	Price        float64 `json:"price"`
+	ReduceOnly   bool    `json:"reduce_only"`
 }
 
 type OrderRequest struct {

@@ -98,8 +98,9 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
     "symbol": "BTC/USDT",
     "type": "market",
     "position_side": "long",
-    "side": "buy",
-    "amount": 0.01
+    "side": "sell",
+    "amount": 0.02,
+    "reduce_only": true
 }
 
 ### 

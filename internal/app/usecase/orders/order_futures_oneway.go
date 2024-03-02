@@ -20,39 +20,58 @@ func NewOrderFuturesOneway(order *entities.Order) *OrderFuturesOneway {
 func (o *OrderFuturesOneway) Validate(ctx context.Context, markets Markets) error {
 	o.order.PositionSide = entities.PositionSideBoth
 
-	if (o.order.Amount > 0 && o.order.Side == entities.OrderSideBuy) || (o.order.Amount < 0 && o.order.Side == entities.OrderSideSell) {
-		market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
-		if err != nil {
-			return err
-		}
+	// if (o.order.Amount > 0 && o.order.Side == entities.OrderSideBuy) || (o.order.Amount < 0 && o.order.Side == entities.OrderSideSell) {
+	// 	market, err := markets.GetMarketWithContext(ctx, o.order.Exchange.Name(), o.order.Symbol.String())
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		limits := market.Limits.Amount
+	// 	limits := market.Limits.Amount
 
-		if limits.Min > 0 && o.order.Amount < limits.Min {
-			return apperror.ErrAmountIsOutOfRange
-		}
-	}
+	// 	if limits.Min > 0 && o.order.Amount < limits.Min {
+	// 		return apperror.ErrAmountIsOutOfRange
+	// 	}
+	// }
 
 	return nil
 }
 
 func (o *OrderFuturesOneway) HoldBalance(ctx context.Context, uc Usecase, log Logger) error {
+	coins := o.order.Symbol.GetCoins()
+	coin := coins.CoinBase
+
 	position, err := uc.GetPositionBySide(ctx, o.order.Exchange, o.order.AccountUID, o.order.Symbol, o.order.PositionSide)
 	if err != nil {
 		log.Error(fmt.Sprintf("HoldBalance:GetPositionBySide [%+v] error: %v", o, err))
 		return err
 	}
 
-	balancePosition := 0.0
-	if o.order.Side == entities.OrderSideBuy && position.Amount < 0 {
-		balancePosition = -position.Amount - position.HoldAmount
-	} else if o.order.Side == entities.OrderSideSell && position.Amount > 0 {
-		balancePosition = position.Amount - position.HoldAmount
-	}
+	balancePosition := func() float64 {
+		if o.order.Side == entities.OrderSideBuy && position.Amount < 0 {
+			return -position.Amount - position.HoldAmount
+		}
+
+		if o.order.Side == entities.OrderSideSell && position.Amount > 0 {
+			return position.Amount - position.HoldAmount
+		}
+
+		return 0
+	}()
 
 	holdPosition := o.order.Amount
 	if holdPosition > balancePosition {
 		holdPosition = balancePosition
+	}
+
+	hold := (o.order.Amount - holdPosition) * o.order.Price
+
+	if o.order.ReduceOnly {
+		if balancePosition <= 0 {
+			log.Error(fmt.Sprintf("HoldBalance:ErrInsufficientFunds [AccountUID: %s, exchange: %s, coin: %s, balance_position: %v]", o.order.AccountUID, o.order.Exchange, coins.CoinQuote, balancePosition))
+			return apperror.ErrInsufficientFunds
+		}
+		o.order.Amount = holdPosition
+		hold = 0
 	}
 
 	if holdPosition > 0 {
@@ -66,11 +85,7 @@ func (o *OrderFuturesOneway) HoldBalance(ctx context.Context, uc Usecase, log Lo
 		}
 	}
 
-	hold := (o.order.Amount - holdPosition) * o.order.Price
 	if hold > 0 {
-		coins := o.order.Symbol.GetCoins()
-		coin := coins.CoinBase
-
 		balanceTotal, balanceHold, err := uc.GetBalanceCoin(ctx, o.order.Exchange, o.order.AccountUID, coin)
 		if err != nil {
 			log.Error(fmt.Sprintf("HoldBalance:GetBalanceCoin [%+v] error: %v", o, err))
@@ -173,43 +188,51 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 		position.HoldAmount = 0
 	}
 
-	if o.order.Amount > unhold {
-		if position.Amount == 0 {
-			position.Price = o.order.Price
-		} else {
-			position.Price = (position.Price + o.order.Price) / 2
+	if o.order.ReduceOnly {
+		if unhold <= 0 {
+			log.Error(fmt.Sprintf("AppendBalance:ErrInsufficientFunds [AccountUID: %s, exchange: %s, coin: %s, unhold: %v, reduce: %v]", o.order.AccountUID, o.order.Exchange, coins.CoinQuote, unhold, o.order.ReduceOnly))
+			return apperror.ErrInsufficientFunds
+		}
+
+		if o.order.Amount > unhold {
+			o.order.Amount = unhold
 		}
 	}
 
-	cost := o.order.Amount * o.order.Price
+	if o.order.Amount > 0 {
+		if o.order.Amount > unhold {
+			if position.Amount == 0 {
+				position.Price = o.order.Price
+			} else {
+				position.Price = (position.Price + o.order.Price) / 2
+			}
+		}
 
-	o.order.Fee = cost * OrderFuturesFee
-	o.order.FeeCoin = coin
+		if o.order.Side == entities.OrderSideBuy {
+			position.Amount += o.order.Amount
+		} else {
+			position.Amount -= o.order.Amount
+		}
 
-	fee := o.order.Amount * OrderFuturesFee
-	amount := o.order.Amount - fee
+		position.Margin = math.Abs(position.Amount) * position.Price / float64(position.Leverage)
+		position.UpdateTS = o.order.UpdateTS
 
-	if o.order.Side == entities.OrderSideBuy {
-		position.Amount += amount
-	} else {
-		position.Amount -= amount
-	}
-
-	position.Margin = math.Abs(position.Amount) * position.Price / float64(position.Leverage)
-	position.UpdateTS = o.order.UpdateTS
-
-	err = uc.SavePosition(ctx, position)
-	if err != nil {
-		log.Error(fmt.Sprintf("AppendBalance:SavePosition [%+v] error: %v", position, err))
-		return err
+		err = uc.SavePosition(ctx, position)
+		if err != nil {
+			log.Error(fmt.Sprintf("AppendBalance:SavePosition [%+v] error: %v", position, err))
+			return err
+		}
 	}
 
 	if unhold > 0 {
 		cost := unhold * o.order.Price
 
+		o.order.Fee = cost * OrderFuturesFee
+		o.order.FeeCoin = coin
+
 		balance := entities.Balance{
 			Coin:  coin,
-			Total: cost,
+			Total: cost - o.order.Fee,
 		}
 
 		err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, balance)
@@ -232,6 +255,9 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 		if hold < 0 {
 			hold = 0
 		}
+
+		o.order.Fee = cost * OrderFuturesFee
+		o.order.FeeCoin = coin
 
 		balance := entities.Balance{
 			Coin:  coin,

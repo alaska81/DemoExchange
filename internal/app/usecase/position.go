@@ -236,8 +236,6 @@ func (uc *Usecase) SavePosition(ctx context.Context, position *entities.Position
 		return err
 	}
 
-	uc.log.Info(fmt.Sprintf("savePosition:UpdatePosition222 [%+v]", *position))
-
 	uc.chPositions <- position
 	return nil
 }

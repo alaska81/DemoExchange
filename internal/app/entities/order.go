@@ -23,6 +23,7 @@ type Order struct {
 	PositionMode PositionMode `json:"position_mode" db:"position_mode"`
 	Fee          float64      `json:"fee" db:"fee"`
 	FeeCoin      Coin         `json:"fee_coin" db:"fee_coin"`
+	ReduceOnly   bool         `json:"reduce_only" db:"reduce_only"`
 }
 
 type Orders []Order

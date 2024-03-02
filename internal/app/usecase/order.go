@@ -36,26 +36,26 @@ func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 	}
 
 	if err := order.Validate(ctx); err != nil {
+		uc.log.Error(fmt.Sprintf("NewOrder:Validate [%+v] error: %v", *order.GetOrder(), err))
 		return err
 	}
 
-	err = uc.order.WithTx(ctx, func(ctx context.Context) error {
+	if err := uc.order.WithTx(ctx, func(ctx context.Context) error {
 		muOrder.Lock()
 		defer muOrder.Unlock()
 
 		if err := order.HoldBalance(ctx, uc, uc.log); err != nil {
-			uc.log.Error(fmt.Sprintf("NewOrder:HoldBalance [%+v] error: %v", *order, err))
+			uc.log.Error(fmt.Sprintf("NewOrder:HoldBalance [%+v] error: %v", *order.GetOrder(), err))
 			return err
 		}
 
 		if err := uc.saveOrder(ctx, order.GetOrder()); err != nil {
-			uc.log.Error(fmt.Sprintf("NewOrder:saveOrder [%+v] error: %v", *order, err))
+			uc.log.Error(fmt.Sprintf("NewOrder:saveOrder [%+v] error: %v", *order.GetOrder(), err))
 			return err
 		}
 
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
