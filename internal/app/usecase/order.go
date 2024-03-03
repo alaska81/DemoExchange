@@ -110,6 +110,13 @@ func (uc *Usecase) ProcessOrders(ctx context.Context) {
 								status = entities.OrderStatusFailed
 								o.Error = err.Error()
 							}
+
+							if o.Fee > 0 {
+								transaction := entities.NewTransaction(o.AccountUID, o.Exchange, o.Symbol, entities.TransactionTypeComission, -o.Fee)
+								if err := uc.AppendTransaction(ctx, transaction); err != nil {
+									uc.log.Error(fmt.Sprintf("ProcessOrders:AppendTransaction [%+v] error: %v", *transaction, err))
+								}
+							}
 						}
 
 						if status == entities.OrderStatusCancelled || status == entities.OrderStatusFailed {
