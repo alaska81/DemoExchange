@@ -25,7 +25,7 @@ var initialBalance = map[entities.Exchange]entities.Balance{
 func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (entities.Token, error) {
 	var key *entities.Key
 
-	err := uc.apikey.WithTx(ctx, func(ctx context.Context) error {
+	if err := uc.apikey.WithTx(ctx, func(ctx context.Context) error {
 		account, err := uc.getAccount(ctx, service, userID)
 		if err != nil {
 			uc.log.Error(fmt.Sprintf("CreateToken:getAccount [service: %s, user_id: %s] error: %v", service, userID, err))
@@ -34,6 +34,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 
 		keys, err := uc.apikey.SelectAccountKeys(ctx, account.AccountUID)
 		if err != nil {
+			uc.log.Error(fmt.Sprintf("CreateToken:SelectAccountKeys [account_uid: %s] error: %v", account.AccountUID, err))
 			return err
 		}
 
@@ -45,6 +46,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 
 		err = uc.apikey.InsertAccountKey(ctx, key)
 		if err != nil {
+			uc.log.Error(fmt.Sprintf("CreateToken:InsertAccountKey [%+v] error: %v", *key, err))
 			return err
 		}
 
@@ -64,15 +66,18 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 
 				err := uc.wallet.AppendTotalCoin(ctx, wallet)
 				if err != nil {
+					uc.log.Error(fmt.Sprintf("CreateToken:AppendTotalCoin [%+v] error: %v", wallet, err))
 					return err
 				}
 			}
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return "", err
+	}
 
-	return key.Token, err
+	return key.Token, nil
 }
 
 func (uc *Usecase) GetAccountUID(ctx context.Context, token entities.Token) (entities.AccountUID, error) {
