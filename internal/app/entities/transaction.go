@@ -30,6 +30,7 @@ type TransactionType string
 const (
 	TransactionTypeLiquidation TransactionType = "liquidation"
 	TransactionTypeComission   TransactionType = "comission"
+	TransactionTypeRealizedPnl TransactionType = "realized pnl"
 )
 
 type TransactionFilter struct {

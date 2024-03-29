@@ -9,19 +9,6 @@ import (
 	"DemoExchange/internal/app/entities"
 )
 
-var exchanges = []entities.Exchange{entities.ExchangeSpot, entities.ExchangeFutures}
-
-var initialBalance = map[entities.Exchange]entities.Balance{
-	entities.ExchangeSpot: {
-		Coin:  "USDT",
-		Total: 3000,
-	},
-	entities.ExchangeFutures: {
-		Coin:  "USDT",
-		Total: 3000,
-	},
-}
-
 func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (entities.Token, error) {
 	var key *entities.Key
 
@@ -52,7 +39,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 
 		if account.IsNew {
 			for _, exchange := range exchanges {
-				balance := initialBalance[exchange]
+				balance := uc.GetInitialBalance(exchange)
 
 				wallet := entities.Wallet{
 					Exchange:   exchange,
@@ -77,6 +64,8 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 		return "", err
 	}
 
+	uc.log.Info(fmt.Sprintf("CreateToken: [service: %s, user_id: %s]", service, userID))
+
 	return key.Token, nil
 }
 
@@ -91,5 +80,9 @@ func (uc *Usecase) DisableToken(ctx context.Context, token entities.Token) error
 		UpdateTS: time.Now().UTC().UnixMilli(),
 	}
 
-	return uc.apikey.UpdateAccountKey(ctx, key)
+	err := uc.apikey.UpdateAccountKey(ctx, key)
+
+	uc.log.Info(fmt.Sprintf("DisableToken: [%s]", token))
+
+	return err
 }

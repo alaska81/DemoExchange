@@ -12,6 +12,7 @@ type Usecase interface {
 	Account
 	Balance
 	Position
+	Transaction
 	Tickers
 	Markets
 }
@@ -30,6 +31,10 @@ type Balance interface {
 type Position interface {
 	GetPositionBySide(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
 	SavePosition(ctx context.Context, position *entities.Position) error
+}
+
+type Transaction interface {
+	AppendTransaction(ctx context.Context, transaction *entities.Transaction) error
 }
 
 type Tickers interface {

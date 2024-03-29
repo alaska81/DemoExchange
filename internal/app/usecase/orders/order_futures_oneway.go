@@ -34,6 +34,8 @@ func (o *OrderFuturesOneway) HoldBalance(ctx context.Context, uc Usecase, log Lo
 		return err
 	}
 
+	o.order.Leverage = position.Leverage
+
 	balancePosition := func() float64 {
 		if o.order.Side == entities.OrderSideBuy && position.Amount < 0 {
 			return -position.Amount - position.HoldAmount
@@ -75,7 +77,9 @@ func (o *OrderFuturesOneway) HoldBalance(ctx context.Context, uc Usecase, log Lo
 		holdPosition = balancePosition
 	}
 
-	hold := (o.order.Amount - holdPosition) * o.order.Price
+	leverage := o.order.Leverage.ToFloat64()
+
+	hold := (o.order.Amount - holdPosition) * o.order.Price / leverage
 
 	if o.order.ReduceOnly {
 		if balancePosition <= 0 {
@@ -134,7 +138,9 @@ func (o *OrderFuturesOneway) UnholdBalance(ctx context.Context, uc Usecase, log 
 		return err
 	}
 
-	cost := o.order.Amount * o.order.Price
+	leverage := o.order.Leverage.ToFloat64()
+
+	cost := o.order.Amount * o.order.Price / leverage
 	unhold := balanceHold - cost
 	if unhold > balanceTotal {
 		unhold = balanceTotal
@@ -161,7 +167,7 @@ func (o *OrderFuturesOneway) UnholdBalance(ctx context.Context, uc Usecase, log 
 		return err
 	}
 
-	position.HoldAmount -= (o.order.Amount - (balanceHold+unhold)/o.order.Price)
+	position.HoldAmount -= (o.order.Amount - (balanceHold+unhold)/o.order.Price*leverage)
 
 	if position.HoldAmount > position.Amount {
 		position.HoldAmount = position.Amount
@@ -211,6 +217,8 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 		}
 	}
 
+	leverage := o.order.Leverage.ToFloat64()
+
 	if o.order.Amount > 0 {
 		if o.order.Amount > unhold {
 			if position.Amount == 0 {
@@ -226,7 +234,7 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 			position.Amount -= o.order.Amount
 		}
 
-		position.Margin = math.Abs(position.Amount) * position.Price / float64(position.Leverage)
+		position.Margin = math.Abs(position.Amount) * position.Price / position.Leverage.ToFloat64()
 		position.UpdateTS = o.order.UpdateTS
 
 		err = uc.SavePosition(ctx, position)
@@ -244,12 +252,26 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 
 		balance := entities.Balance{
 			Coin:  coin,
-			Total: cost - o.order.Fee,
+			Total: cost/leverage - o.order.Fee,
 		}
 
 		err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, balance)
 		if err != nil {
-			log.Error(fmt.Sprintf("AppendBalance:AppendBalance [AccountUID: %s, exchange: %s, balance: %+v] error: %v", o.order.AccountUID, o.order.Exchange, balance, err))
+			log.Error(fmt.Sprintf("AppendBalance:AppendBalance [AccountUID: %s, exchange: %s, balance: %+v, leverage: %v] error: %v", o.order.AccountUID, o.order.Exchange, balance, leverage, err))
+			return err
+		}
+
+		var pnl float64
+		if position.Side == entities.PositionSideLong {
+			pnl = o.order.Amount * (o.order.Price - position.Price)
+		} else {
+			pnl = o.order.Amount * (position.Price - o.order.Price)
+		}
+
+		transaction := entities.NewTransaction(o.order.AccountUID, o.order.Exchange, o.order.Symbol, entities.TransactionTypeRealizedPnl, pnl)
+		err = uc.AppendTransaction(ctx, transaction)
+		if err != nil {
+			log.Error(fmt.Sprintf("AppendBalance:AppendTransaction [%+v] error: %v", *transaction, err))
 			return err
 		}
 	}
@@ -262,7 +284,7 @@ func (o *OrderFuturesOneway) AppendBalance(ctx context.Context, uc Usecase, log 
 			return err
 		}
 
-		cost := o.order.Amount * o.order.Price
+		cost := o.order.Amount * o.order.Price / leverage
 		hold := balanceHold - cost
 		if hold < 0 {
 			hold = 0

@@ -17,6 +17,8 @@ import (
 
 const lenBufferOrders = 100
 
+var exchanges = []entities.Exchange{entities.ExchangeSpot, entities.ExchangeFutures}
+
 type Config struct {
 	KeyLimit    int
 	MaxBalances map[entities.Coin]float64

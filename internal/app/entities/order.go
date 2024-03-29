@@ -7,26 +7,27 @@ import (
 )
 
 type Order struct {
-	AccountUID   AccountUID   `json:"account_uid" db:"account_uid"`
-	OrderUID     string       `json:"order_uid" db:"order_uid"`
-	Exchange     Exchange     `json:"exchange" db:"exchange"`
-	Symbol       Symbol       `json:"symbol" db:"symbol"`
-	Type         OrderType    `json:"type" db:"type"`
-	Side         OrderSide    `json:"side" db:"side"`
-	Amount       float64      `json:"amount" db:"amount"`
-	Price        float64      `json:"price" db:"price"`
-	Status       OrderStatus  `json:"status" db:"status"`
-	Error        string       `json:"error,omitempty" db:"error"`
-	CreateTS     int64        `json:"create_ts" db:"create_ts"`
-	UpdateTS     int64        `json:"update_ts" db:"update_ts"`
-	PositionSide PositionSide `json:"position_side" db:"position_side"`
-	PositionMode PositionMode `json:"position_mode" db:"position_mode"`
-	Fee          float64      `json:"fee" db:"fee"`
-	FeeCoin      Coin         `json:"fee_coin" db:"fee_coin"`
-	ReduceOnly   bool         `json:"reduce_only" db:"reduce_only"`
+	AccountUID   AccountUID       `json:"account_uid" db:"account_uid"`
+	OrderUID     string           `json:"order_uid" db:"order_uid"`
+	Exchange     Exchange         `json:"exchange" db:"exchange"`
+	Symbol       Symbol           `json:"symbol" db:"symbol"`
+	Type         OrderType        `json:"type" db:"type"`
+	Side         OrderSide        `json:"side" db:"side"`
+	Amount       float64          `json:"amount" db:"amount"`
+	Price        float64          `json:"price" db:"price"`
+	Status       OrderStatus      `json:"status" db:"status"`
+	Error        string           `json:"error,omitempty" db:"error"`
+	CreateTS     int64            `json:"create_ts" db:"create_ts"`
+	UpdateTS     int64            `json:"update_ts" db:"update_ts"`
+	PositionSide PositionSide     `json:"position_side" db:"position_side"`
+	Fee          float64          `json:"fee" db:"fee"`
+	FeeCoin      Coin             `json:"fee_coin" db:"fee_coin"`
+	ReduceOnly   bool             `json:"reduce_only" db:"reduce_only"`
+	Leverage     PositionLeverage `json:"leverage" db:"leverage"`
 
-	Precision int64
-	Limit     float64
+	PositionMode PositionMode
+	Precision    int64
+	Limit        float64
 }
 
 type Orders []Order

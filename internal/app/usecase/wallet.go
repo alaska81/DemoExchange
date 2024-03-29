@@ -11,6 +11,21 @@ import (
 
 var muWallet = &sync.RWMutex{}
 
+var initialBalance = map[entities.Exchange]entities.Balance{
+	entities.ExchangeSpot: {
+		Coin:  "USDT",
+		Total: 3000,
+	},
+	entities.ExchangeFutures: {
+		Coin:  "USDT",
+		Total: 3000,
+	},
+}
+
+func (uc *Usecase) GetInitialBalance(exchange entities.Exchange) entities.Balance {
+	return initialBalance[exchange]
+}
+
 func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) (entities.Balances, error) {
 	muWallet.RLock()
 	defer muWallet.RUnlock()

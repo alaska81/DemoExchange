@@ -47,6 +47,10 @@ const (
 
 type PositionLeverage int32
 
+func (l PositionLeverage) ToFloat64() float64 {
+	return float64(l)
+}
+
 type PositionSide string
 
 const (

@@ -35,11 +35,11 @@ func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error
 
 func (s *Storage) InsertOrder(ctx context.Context, order *entities.Order) error {
 	sql := `
-		INSERT INTO "order" (account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, create_ts, update_ts) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		INSERT INTO "order" (account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, leverage, create_ts, update_ts) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING amount, price
 	`
-	row := s.repo.QueryRow(ctx, sql, order.AccountUID, order.OrderUID, order.Exchange, order.Symbol, order.Type, order.PositionSide, order.Side, order.Amount, order.Price, order.Fee, order.FeeCoin, order.ReduceOnly, order.Status, order.CreateTS, order.UpdateTS)
+	row := s.repo.QueryRow(ctx, sql, order.AccountUID, order.OrderUID, order.Exchange, order.Symbol, order.Type, order.PositionSide, order.Side, order.Amount, order.Price, order.Fee, order.FeeCoin, order.ReduceOnly, order.Status, order.Leverage, order.CreateTS, order.UpdateTS)
 
 	return row.Scan(&order.Amount, &order.Price)
 }
@@ -48,14 +48,14 @@ func (s *Storage) SelectOrder(ctx context.Context, exchange entities.Exchange, a
 	var order entities.Order
 
 	sql := `
-		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, create_ts, update_ts 
+		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, leverage, create_ts, update_ts 
 		FROM "order" 
 		WHERE exchange = $1 AND account_uid = $2 AND order_uid = $3
 	`
 
 	row := s.repo.QueryRow(ctx, sql, exchange, accountUID, orderUID)
 
-	err := row.Scan(&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.CreateTS, &order.UpdateTS)
+	err := row.Scan(&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.Leverage, &order.CreateTS, &order.UpdateTS)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrOrderNotFound
@@ -75,7 +75,7 @@ func (s *Storage) UpdateOrder(ctx context.Context, order *entities.Order) error 
 
 func (s *Storage) SelectOrders(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, statuses []entities.OrderStatus, limit int) ([]*entities.Order, error) {
 	sql := `
-		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, create_ts, update_ts 
+		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, leverage, create_ts, update_ts 
 		FROM "order" 
 		WHERE exchange = $1 AND account_uid = $2 AND (status = ANY(string_to_array($3, ',')::text[]) OR $3 = '')
 		ORDER BY create_ts DESC
@@ -96,7 +96,7 @@ func (s *Storage) SelectOrders(ctx context.Context, exchange entities.Exchange, 
 
 	orders := make([]*entities.Order, 0)
 
-	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.CreateTS, &order.UpdateTS}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.Leverage, &order.CreateTS, &order.UpdateTS}, func() error {
 		order := order
 		orders = append(orders, &order)
 		return nil
@@ -107,7 +107,7 @@ func (s *Storage) SelectOrders(ctx context.Context, exchange entities.Exchange, 
 
 func (s *Storage) SelectPendingOrders(ctx context.Context) ([]*entities.Order, error) {
 	sql := `
-		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, create_ts, update_ts 
+		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, leverage, create_ts, update_ts 
 		FROM "order" 
 		WHERE status IN ($1, $2)
 	`
@@ -126,7 +126,7 @@ func (s *Storage) SelectPendingOrders(ctx context.Context) ([]*entities.Order, e
 		orders []*entities.Order
 	)
 
-	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.CreateTS, &order.UpdateTS}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.Leverage, &order.CreateTS, &order.UpdateTS}, func() error {
 		order := order
 		orders = append(orders, &order)
 		return nil
@@ -137,7 +137,7 @@ func (s *Storage) SelectPendingOrders(ctx context.Context) ([]*entities.Order, e
 
 func (s *Storage) SelectPendingOrdersBySymbol(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, symbol *entities.Symbol) ([]*entities.Order, error) {
 	sql := `
-		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, create_ts, update_ts 
+		SELECT account_uid, order_uid, exchange, symbol, type, position_side, side, amount, price, fee, fee_coin, reduce_only, status, leverage, create_ts, update_ts 
 		FROM "order" 
 		WHERE exchange = $1 AND account_uid = $2 
 			AND (symbol = $3 OR $3 IS NULL)
@@ -157,7 +157,7 @@ func (s *Storage) SelectPendingOrdersBySymbol(ctx context.Context, exchange enti
 
 	orders := make([]*entities.Order, 0)
 
-	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.CreateTS, &order.UpdateTS}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&order.AccountUID, &order.OrderUID, &order.Exchange, &order.Symbol, &order.Type, &order.PositionSide, &order.Side, &order.Amount, &order.Price, &order.Fee, &order.FeeCoin, &order.ReduceOnly, &order.Status, &order.Leverage, &order.CreateTS, &order.UpdateTS}, func() error {
 		order := order
 		orders = append(orders, &order)
 		return nil

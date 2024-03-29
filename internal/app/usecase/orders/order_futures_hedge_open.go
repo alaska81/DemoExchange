@@ -43,12 +43,22 @@ func (o *OrderFuturesHedgeOpen) HoldBalance(ctx context.Context, uc Usecase, log
 		return err
 	}
 
+	position, err := uc.GetPositionBySide(ctx, o.order.Exchange, o.order.AccountUID, o.order.Symbol, o.order.PositionSide)
+	if err != nil {
+		log.Error(fmt.Sprintf("HoldBalance:GetPositionBySide [%+v] error: %v", o, err))
+		return err
+	}
+
+	o.order.Leverage = position.Leverage
+
 	cost := o.order.Amount * o.order.Price
 
 	o.order.Fee = cost * OrderFuturesFee
 	o.order.FeeCoin = coin
 
-	cost += o.order.Fee
+	leverage := o.order.Leverage.ToFloat64()
+
+	cost = cost/leverage + o.order.Fee
 
 	hold := balanceHold + cost
 	if hold > balanceTotal {
@@ -85,7 +95,10 @@ func (o *OrderFuturesHedgeOpen) UnholdBalance(ctx context.Context, uc Usecase, l
 	o.order.Fee = cost * OrderFuturesFee
 	o.order.FeeCoin = coin
 
-	cost += o.order.Fee
+	leverage := o.order.Leverage.ToFloat64()
+
+	cost = cost/leverage + o.order.Fee
+
 	unhold := balanceHold - cost
 	if unhold > balanceTotal {
 		unhold = balanceTotal
@@ -124,7 +137,10 @@ func (o *OrderFuturesHedgeOpen) AppendBalance(ctx context.Context, uc Usecase, l
 	o.order.Fee = cost * OrderFuturesFee
 	o.order.FeeCoin = coin
 
-	cost += o.order.Fee
+	leverage := o.order.Leverage.ToFloat64()
+
+	cost = cost/leverage + o.order.Fee
+
 	if cost > balanceTotal {
 		log.Error(fmt.Sprintf("AppendBalance:ErrInsufficientFunds [AccountUID: %s, coin: %s, balance_total: %v, cost: %v]", o.order.AccountUID, coin, balanceTotal, cost))
 		return apperror.ErrInsufficientFunds
@@ -166,7 +182,7 @@ func (o *OrderFuturesHedgeOpen) AppendBalance(ctx context.Context, uc Usecase, l
 	}
 
 	position.Amount += o.order.Amount
-	position.Margin = position.Amount * position.Price / float64(position.Leverage)
+	position.Margin = position.Amount * position.Price / position.Leverage.ToFloat64()
 
 	position.UpdateTS = o.order.UpdateTS
 

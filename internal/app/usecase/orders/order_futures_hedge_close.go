@@ -34,6 +34,8 @@ func (o *OrderFuturesHedgeClose) HoldBalance(ctx context.Context, uc Usecase, lo
 		return apperror.ErrPositionNotFound
 	}
 
+	o.order.Leverage = position.Leverage
+
 	balancePosition := position.Amount - position.HoldAmount
 
 	amount := precision.ToFix(o.order.Amount, o.order.Precision)
@@ -111,7 +113,7 @@ func (o *OrderFuturesHedgeClose) AppendBalance(ctx context.Context, uc Usecase, 
 		return apperror.ErrInsufficientFunds
 	}
 
-	position.Margin = position.Amount * position.Price / float64(position.Leverage)
+	position.Margin = position.Amount * position.Price / position.Leverage.ToFloat64()
 	position.UpdateTS = o.order.UpdateTS
 
 	err = uc.SavePosition(ctx, position)
@@ -125,14 +127,30 @@ func (o *OrderFuturesHedgeClose) AppendBalance(ctx context.Context, uc Usecase, 
 	o.order.Fee = cost * OrderFuturesFee
 	o.order.FeeCoin = coin
 
+	leverage := o.order.Leverage.ToFloat64()
+
 	balance := entities.Balance{
 		Coin:  coin,
-		Total: cost - o.order.Fee,
+		Total: cost/leverage - o.order.Fee,
 	}
 
 	err = uc.AppendBalance(ctx, o.order.Exchange, o.order.AccountUID, balance)
 	if err != nil {
-		log.Error(fmt.Sprintf("AppendBalance:AppendBalance [AccountUID: %s, exchange: %s, balance: %+v] error: %v", o.order.AccountUID, o.order.Exchange, balance, err))
+		log.Error(fmt.Sprintf("AppendBalance:AppendBalance [AccountUID: %s, exchange: %s, balance: %+v, leverage: %v] error: %v", o.order.AccountUID, o.order.Exchange, balance, leverage, err))
+		return err
+	}
+
+	var pnl float64
+	if position.Side == entities.PositionSideLong {
+		pnl = o.order.Amount * (o.order.Price - position.Price)
+	} else {
+		pnl = o.order.Amount * (position.Price - o.order.Price)
+	}
+
+	transaction := entities.NewTransaction(o.order.AccountUID, o.order.Exchange, o.order.Symbol, entities.TransactionTypeRealizedPnl, pnl)
+	err = uc.AppendTransaction(ctx, transaction)
+	if err != nil {
+		log.Error(fmt.Sprintf("AppendBalance:AppendTransaction [%+v] error: %v", *transaction, err))
 		return err
 	}
 
