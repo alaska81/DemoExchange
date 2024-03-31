@@ -72,14 +72,15 @@ func (uc *Usecase) GetBalances(ctx context.Context, exchange entities.Exchange, 
 }
 
 func (uc *Usecase) Deposit(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin, amount float64) (float64, error) {
-	return uc.AppendCoin(ctx, exchange, accountUID, coin, amount)
-}
-
-func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin, amount float64) (float64, error) {
 	muWallet.Lock()
 	defer muWallet.Unlock()
 
 	err := uc.wallet.WithTx(ctx, func(ctx context.Context) error {
+		// 	maxBalance := uc.getBalanceLimit(coin)
+		// 	if maxBalance == 0 {
+		// 		return apperror.ErrAppendBalanceCoinNotAllowed
+		// 	}
+
 		wallet := entities.Wallet{
 			Exchange:   exchange,
 			AccountUID: accountUID,
@@ -90,17 +91,17 @@ func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, a
 		}
 
 		balance, ok := balances[coin]
-		if !ok {
-			return apperror.ErrBalanceNotFound
+		if ok {
+			amount += balance.Total
 		}
 
-		if balance.Total+amount > uc.getBalanceLimit(coin) {
-			amount = uc.getBalanceLimit(coin) - balance.Total
-		}
+		// 	if balanceTotal+amount > maxBalance {
+		// 		amount = maxBalance - balanceTotal
+		// 	}
 
-		if amount <= 0 {
-			return apperror.ErrBalanceLimitExceeded
-		}
+		// 	if amount <= 0 {
+		// 		return apperror.ErrBalanceLimitExceeded
+		// 	}
 
 		wallet.Balance.Coin = coin
 		wallet.Balance.Total = amount
@@ -113,10 +114,6 @@ func (uc *Usecase) AppendCoin(ctx context.Context, exchange entities.Exchange, a
 }
 
 func (uc *Usecase) Withdraw(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin, amount float64) error {
-	return uc.SubtractCoin(ctx, exchange, accountUID, coin, amount)
-}
-
-func (uc *Usecase) SubtractCoin(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, coin entities.Coin, amount float64) error {
 	muWallet.Lock()
 	defer muWallet.Unlock()
 
@@ -188,22 +185,6 @@ func (uc *Usecase) SetHoldBalance(ctx context.Context, exchange entities.Exchang
 	return nil
 }
 
-func (uc *Usecase) SubtractBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
-	wallet := entities.Wallet{
-		Exchange:   exchange,
-		AccountUID: accountUID,
-		Balance:    balance,
-		UpdateTS:   entities.TS(),
-	}
-	err := uc.wallet.SubtractTotalCoin(ctx, wallet)
-	if err != nil {
-		uc.log.Error(fmt.Sprintf("SubtractBalance:SubtractTotalCoin [%+v] error: %v", wallet, err))
-		return err
-	}
-
-	return nil
-}
-
 func (uc *Usecase) AppendBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
 	wallet := entities.Wallet{
 		Exchange:   exchange,
@@ -220,6 +201,22 @@ func (uc *Usecase) AppendBalance(ctx context.Context, exchange entities.Exchange
 	return nil
 }
 
-func (uc *Usecase) getBalanceLimit(coin entities.Coin) float64 {
-	return uc.cfg.MaxBalances[coin]
+func (uc *Usecase) SubtractBalance(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, balance entities.Balance) error {
+	wallet := entities.Wallet{
+		Exchange:   exchange,
+		AccountUID: accountUID,
+		Balance:    balance,
+		UpdateTS:   entities.TS(),
+	}
+	err := uc.wallet.SubtractTotalCoin(ctx, wallet)
+	if err != nil {
+		uc.log.Error(fmt.Sprintf("SubtractBalance:SubtractTotalCoin [%+v] error: %v", wallet, err))
+		return err
+	}
+
+	return nil
 }
+
+// func (uc *Usecase) getBalanceLimit(coin entities.Coin) float64 {
+// 	return uc.cfg.MaxBalances[coin]
+// }
