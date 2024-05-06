@@ -84,16 +84,22 @@ func (uc *Usecase) Deposit(ctx context.Context, exchange entities.Exchange, acco
 		wallet := entities.Wallet{
 			Exchange:   exchange,
 			AccountUID: accountUID,
-		}
-		balances, err := uc.wallet.SelectBalances(ctx, wallet)
-		if err != nil {
-			return err
+			Balance: entities.Balance{
+				Coin:  coin,
+				Total: amount,
+			},
+			UpdateTS: entities.TS(),
 		}
 
-		balance, ok := balances[coin]
-		if ok {
-			amount += balance.Total
-		}
+		// balances, err := uc.wallet.SelectBalances(ctx, wallet)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// balance, ok := balances[coin]
+		// if ok {
+		// 	amount += balance.Total
+		// }
 
 		// 	if balanceTotal+amount > maxBalance {
 		// 		amount = maxBalance - balanceTotal
@@ -103,9 +109,9 @@ func (uc *Usecase) Deposit(ctx context.Context, exchange entities.Exchange, acco
 		// 		return apperror.ErrBalanceLimitExceeded
 		// 	}
 
-		wallet.Balance.Coin = coin
-		wallet.Balance.Total = amount
-		wallet.UpdateTS = entities.TS()
+		// wallet.Balance.Coin = coin
+		// wallet.Balance.Total = amount
+		// wallet.UpdateTS = entities.TS()
 
 		return uc.wallet.AppendTotalCoin(ctx, wallet)
 	})

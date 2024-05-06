@@ -167,20 +167,22 @@ func (o *OrderFuturesOneway) UnholdBalance(ctx context.Context, uc Usecase, log 
 		return err
 	}
 
-	position.HoldAmount -= (o.order.Amount - (balanceHold+unhold)/o.order.Price*leverage)
+	if position.HoldAmount > 0 {
+		position.HoldAmount -= (o.order.Amount - (balanceHold+unhold)/o.order.Price*leverage)
 
-	if position.HoldAmount > position.Amount {
-		position.HoldAmount = position.Amount
-	}
+		if position.HoldAmount > position.Amount {
+			position.HoldAmount = position.Amount
+		}
 
-	if position.HoldAmount < 0 {
-		position.HoldAmount = 0
-	}
+		if position.HoldAmount < 0 {
+			position.HoldAmount = 0
+		}
 
-	err = uc.SavePosition(ctx, position)
-	if err != nil {
-		log.Error(fmt.Sprintf("UnholdBalance:SavePosition [%+v] error: %v", position, err))
-		return err
+		err = uc.SavePosition(ctx, position)
+		if err != nil {
+			log.Error(fmt.Sprintf("UnholdBalance:SavePosition [%+v] error: %v", position, err))
+			return err
+		}
 	}
 
 	return nil
