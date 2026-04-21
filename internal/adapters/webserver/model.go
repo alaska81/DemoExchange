@@ -9,8 +9,9 @@ type Responce struct {
 
 type CreateTokenRequest struct {
 	// Exchange string `json:"exchange"`
-	Service string `json:"service"`
-	UserID  string `json:"user_id"`
+	Service string         `json:"service"`
+	UserID  string         `json:"user_id"`
+	Deposit DepositRequest `json:"deposit,omitempty"`
 }
 
 type DisableTokenRequest struct {

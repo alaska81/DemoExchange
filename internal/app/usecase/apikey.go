@@ -9,7 +9,12 @@ import (
 	"DemoExchange/internal/app/entities"
 )
 
-func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (entities.Token, error) {
+const (
+	defaultCoin   = "USDT"
+	defaultAmount = 3000
+)
+
+func (uc *Usecase) CreateToken(ctx context.Context, service, userID string, coin entities.Coin, amount float64) (entities.Token, error) {
 	var key *entities.Key
 
 	if err := uc.apikey.WithTx(ctx, func(ctx context.Context) error {
@@ -38,15 +43,21 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 		}
 
 		if account.IsNew {
-			for _, exchange := range exchanges {
-				balance := uc.GetInitialBalance(exchange)
+			if coin == "" {
+				coin = defaultCoin
+			}
 
+			if amount == 0 {
+				amount = defaultAmount
+			}
+
+			for _, exchange := range exchanges {
 				wallet := entities.Wallet{
 					Exchange:   exchange,
 					AccountUID: key.AccountUID,
 					Balance: entities.Balance{
-						Coin:  balance.Coin,
-						Total: balance.Total,
+						Coin:  coin,
+						Total: amount,
 					},
 					UpdateTS: entities.TS(),
 				}
@@ -64,7 +75,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string) (ent
 		return "", err
 	}
 
-	uc.log.Info(fmt.Sprintf("CreateToken: [service: %s, user_id: %s]", service, userID))
+	uc.log.Info(fmt.Sprintf("CreateToken: [service: %s, user_id: %s, coin: %s, amount: %f]", service, userID, coin, amount))
 
 	return key.Token, nil
 }

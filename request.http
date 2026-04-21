@@ -29,7 +29,8 @@ secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
 
 {
     "service": "cryptorobotics",
-    "user_id": "467"
+    "user_id": "467",
+    "deposit": {"coin": "USDT", "amount": 10000}
 }
 
 ###
@@ -39,7 +40,7 @@ secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
 
 {
     "service": "cryptorobotics",
-    "user_id": "2658"
+    "user_id": "26581"
 }
 
 

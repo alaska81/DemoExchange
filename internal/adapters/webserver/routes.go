@@ -178,7 +178,7 @@ func (r *Routes) postAPIKeyCreateHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := r.usecase.CreateToken(c.Request.Context(), req.Service, req.UserID)
+	result, err := r.usecase.CreateToken(c.Request.Context(), req.Service, req.UserID, entities.Coin(req.Deposit.Coin), req.Deposit.Amount)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
