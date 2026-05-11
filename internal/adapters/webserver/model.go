@@ -7,6 +7,11 @@ type Responce struct {
 	Time    string      `json:"time"`
 }
 
+type AccountCloseRequest struct {
+	Service string `json:"service"`
+	UserID  string `json:"user_id"`
+}
+
 type CreateTokenRequest struct {
 	// Exchange string `json:"exchange"`
 	Service string         `json:"service"`

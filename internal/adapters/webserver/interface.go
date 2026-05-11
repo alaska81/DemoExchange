@@ -23,6 +23,7 @@ type Orderbook interface {
 
 type Usecase interface {
 	SetAccountPositionMode(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, positionMode entities.PositionMode) error
+	AccountClose(ctx context.Context, service, userID string) error
 
 	CreateToken(ctx context.Context, service, userID string, coin entities.Coin, amount float64) (entities.Token, error)
 	DisableToken(ctx context.Context, token entities.Token) error

@@ -74,13 +74,11 @@ func (s *Storage) SelectAccountKeys(ctx context.Context, accountUID entities.Acc
 }
 
 func (s *Storage) SelectAccountUID(ctx context.Context, token entities.Token) (entities.AccountUID, error) {
-	sql := `SELECT account_uid FROM apikey WHERE token = $1`
-
-	row := s.repo.QueryRow(ctx, sql, token)
-
 	var accountUID entities.AccountUID
 
-	err := row.Scan(&accountUID)
+	sql := `SELECT account_uid FROM apikey WHERE token = $1`
+
+	err := s.repo.QueryRow(ctx, sql, token).Scan(&accountUID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return "", apperror.ErrTokenNotFound

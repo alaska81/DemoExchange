@@ -24,6 +24,7 @@ type AccountStorage interface {
 	UpdatePositionMode(ctx context.Context, account *entities.Account) error
 	SelectAccount(ctx context.Context, service, userID string) (*entities.Account, error)
 	SelectAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error)
+	UpdateAccount(ctx context.Context, account *entities.Account) error
 }
 
 type APIKeyStorage interface {

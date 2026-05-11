@@ -47,6 +47,10 @@ func (r *Routes) Handler() http.Handler {
 	market.GET("/orderbook", r.getMarketOrderbookHandler)
 	market.GET("/history/orders", r.getMarketHistoryOrdersHandler)
 
+	account := v1.Group("/account")
+	account.Use(r.authTokenMiddleware())
+	account.POST("/close", r.postAccountCloseHandler)
+
 	apikey := v1.Group("/apikey")
 	apikey.Use(authSecretMiddleware(r.cfg.AllowServiceTokens))
 	apikey.POST("/create", r.postAPIKeyCreateHandler)
@@ -164,6 +168,32 @@ func (r *Routes) getMarketHistoryOrdersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"return":  make([]entities.Order, 0),
+		"time":    time.Now().Format("2006-01-02 15:04:05"),
+	})
+}
+
+func (r *Routes) postAccountCloseHandler(c *gin.Context) {
+	var req AccountCloseRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	err := r.usecase.AccountClose(c.Request.Context(), req.Service, req.UserID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"time":    time.Now().Format("2006-01-02 15:04:05"),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
 		"time":    time.Now().Format("2006-01-02 15:04:05"),
 	})
 }

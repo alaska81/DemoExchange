@@ -93,7 +93,7 @@ func (uc *Usecase) DisableToken(ctx context.Context, token entities.Token) error
 
 	err := uc.apikey.UpdateAccountKey(ctx, key)
 
-	uc.log.Info(fmt.Sprintf("DisableToken: [%s]", token))
+	uc.log.Info(fmt.Sprintf("Disable Token: [%s]", token))
 
 	return err
 }

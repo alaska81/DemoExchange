@@ -17,6 +17,7 @@ type Account struct {
 	PositionMode PositionMode `json:"position_mode" db:"position_mode"`
 	CreateTS     int64        `json:"create_ts" db:"create_ts"`
 	UpdateTS     int64        `json:"update_ts" db:"update_ts"`
+	Disabled     bool         `json:"disabled" db:"disabled"`
 	IsNew        bool         `json:"-" db:"-"`
 }
 

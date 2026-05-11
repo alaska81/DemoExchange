@@ -3,39 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
 )
-
-func (uc *Usecase) createAccount(ctx context.Context, service, userID string) (*entities.Account, error) {
-	account := entities.NewAccount(service, userID)
-
-	err := uc.account.InsertAccount(ctx, account)
-	if err != nil {
-		return nil, err
-	}
-
-	return account, nil
-}
-
-func (uc *Usecase) getAccount(ctx context.Context, service, userID string) (*entities.Account, error) {
-	account, err := uc.account.SelectAccount(ctx, service, userID)
-	if err != nil {
-		if errors.Is(err, apperror.ErrAccountNotFound) {
-			account, err = uc.createAccount(ctx, service, userID)
-			if err != nil {
-				return nil, err
-			}
-
-			account.IsNew = true
-			return account, nil
-		}
-		return nil, err
-	}
-
-	return account, nil
-}
 
 func (uc *Usecase) GetAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error) {
 	return uc.account.SelectAccountByUID(ctx, accountUID)
@@ -63,4 +36,75 @@ func (uc *Usecase) SetAccountPositionMode(ctx context.Context, exchange entities
 
 		return nil
 	})
+}
+
+func (uc *Usecase) AccountClose(ctx context.Context, service, userID string) error {
+	return uc.account.WithTx(ctx, func(ctx context.Context) error {
+		account, err := uc.account.SelectAccount(ctx, service, userID)
+		if err != nil {
+			uc.log.Error(fmt.Sprintf("AccountClose:SelectAccount [account_uid: %s] error: %v", account.AccountUID, err))
+			return err
+		}
+
+		keys, err := uc.apikey.SelectAccountKeys(ctx, account.AccountUID)
+		if err != nil {
+			uc.log.Error(fmt.Sprintf("AccountClose:SelectAccountKeys [account_uid: %s] error: %v", account.AccountUID, err))
+			return err
+		}
+
+		for _, key := range keys {
+			if err := uc.DisableToken(ctx, key.Token); err != nil {
+				return err
+			}
+		}
+
+		//TODO: close positions
+
+		return uc.disableAccount(ctx, account.AccountUID)
+	})
+}
+
+func (uc *Usecase) getAccount(ctx context.Context, service, userID string) (*entities.Account, error) {
+	account, err := uc.account.SelectAccount(ctx, service, userID)
+	if err != nil {
+		if errors.Is(err, apperror.ErrAccountNotFound) {
+			account, err = uc.createAccount(ctx, service, userID)
+			if err != nil {
+				return nil, err
+			}
+
+			account.IsNew = true
+			return account, nil
+		}
+		return nil, err
+	}
+
+	return account, nil
+}
+
+func (uc *Usecase) createAccount(ctx context.Context, service, userID string) (*entities.Account, error) {
+	account := entities.NewAccount(service, userID)
+
+	err := uc.account.InsertAccount(ctx, account)
+	if err != nil {
+		return nil, err
+	}
+
+	uc.log.Info(fmt.Sprintf("Create account: [%s]", account.AccountUID))
+
+	return account, nil
+}
+
+func (uc *Usecase) disableAccount(ctx context.Context, accountID entities.AccountUID) error {
+	account := &entities.Account{
+		AccountUID: accountID,
+		Disabled:   true,
+		UpdateTS:   time.Now().UTC().UnixMilli(),
+	}
+
+	err := uc.account.UpdateAccount(ctx, account)
+
+	uc.log.Info(fmt.Sprintf("Disable account: [%s]", account.AccountUID))
+
+	return err
 }

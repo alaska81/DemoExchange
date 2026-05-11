@@ -21,6 +21,16 @@ GET http://localhost:44444/v1/market/history/orders?exchange=demo_futures HTTP/1
 content-type: application/json
 
 
+###
+POST http://localhost:44444/v1/account/close HTTP/1.1
+content-type: application/json
+Token: 71788e2feac137f3c4e49488c91993b9d6c3392e
+
+{
+    "service": "cryptorobotics",
+    "user_id": "4467"
+}
+
 
 ###
 POST http://localhost:44444/v1/apikey/create HTTP/1.1
@@ -29,7 +39,7 @@ secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
 
 {
     "service": "cryptorobotics",
-    "user_id": "467",
+    "user_id": "4467",
     "deposit": {"coin": "USDT", "amount": 10000}
 }
 
@@ -51,7 +61,7 @@ content-type: application/json
 secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
 
 {
-    "token": "d5f5f6048166facbf9c239b9ceefa3c5ea29ad3e"
+    "token": "71788e2feac137f3c4e49488c91993b9d6c3392e"
 }
 
 

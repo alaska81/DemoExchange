@@ -48,7 +48,7 @@ func (s *Storage) SelectAccount(ctx context.Context, service, userID string) (*e
 	var account entities.Account
 
 	sql := `
-		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE service = $1 AND user_id = $2
+		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE service = $1 AND user_id = $2 AND disabled = false
 	`
 
 	row := s.repo.QueryRow(ctx, sql, service, userID)
@@ -68,7 +68,7 @@ func (s *Storage) SelectAccountByUID(ctx context.Context, accountUID entities.Ac
 	var account entities.Account
 
 	sql := `
-		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE account_uid = $1
+		SELECT account_uid, service, user_id, position_mode, create_ts, update_ts FROM account WHERE account_uid = $1 AND disabled = false
 	`
 
 	row := s.repo.QueryRow(ctx, sql, accountUID)
@@ -82,4 +82,12 @@ func (s *Storage) SelectAccountByUID(ctx context.Context, accountUID entities.Ac
 	}
 
 	return &account, nil
+}
+
+func (s *Storage) UpdateAccount(ctx context.Context, account *entities.Account) error {
+	sql := `
+		UPDATE account SET disabled = $2, update_ts = $3 WHERE account_uid = $1
+	`
+
+	return s.repo.Exec(ctx, sql, account.AccountUID, account.Disabled, account.UpdateTS)
 }
