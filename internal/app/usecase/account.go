@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
@@ -20,7 +19,7 @@ func (uc *Usecase) SetAccountPositionMode(ctx context.Context, exchange entities
 			return apperror.ErrSetPositionMode.Wrap(err)
 		}
 
-		if err := uc.checkPresentOpenPosition(ctx, exchange, accountUID); err != nil {
+		if err := uc.checkPresentOpenPosition(ctx, accountUID); err != nil {
 			return apperror.ErrSetPositionMode.Wrap(err)
 		}
 
@@ -46,6 +45,26 @@ func (uc *Usecase) AccountClose(ctx context.Context, service, userID string) err
 			return err
 		}
 
+		positions, err := uc.position.SelectAccountOpenPositions(ctx, account.AccountUID)
+		if err != nil {
+			uc.log.Error(fmt.Sprintf("AccountClose:SelectAccountOpenPositions [account_uid: %s] error: %v", account.AccountUID, err))
+			return err
+		}
+
+		for _, position := range positions {
+			position.Amount = 0
+			position.HoldAmount = 0
+			position.Margin = 0
+			position.UpdateTS = entities.TS()
+
+			if err := uc.position.UpdatePosition(ctx, position); err != nil {
+				uc.log.Error(fmt.Sprintf("AccountClose:UpdatePosition [%+v] error: %v", *position, err))
+				return err
+			}
+
+			uc.log.Info(fmt.Sprintf("Close Position: [account_uid: %s, symbol: %s]", account.AccountUID, position.Symbol.String()))
+		}
+
 		keys, err := uc.apikey.SelectAccountKeys(ctx, account.AccountUID)
 		if err != nil {
 			uc.log.Error(fmt.Sprintf("AccountClose:SelectAccountKeys [account_uid: %s] error: %v", account.AccountUID, err))
@@ -57,8 +76,6 @@ func (uc *Usecase) AccountClose(ctx context.Context, service, userID string) err
 				return err
 			}
 		}
-
-		//TODO: close positions
 
 		return uc.disableAccount(ctx, account.AccountUID)
 	})
@@ -90,7 +107,7 @@ func (uc *Usecase) createAccount(ctx context.Context, service, userID string) (*
 		return nil, err
 	}
 
-	uc.log.Info(fmt.Sprintf("Create account: [%s]", account.AccountUID))
+	uc.log.Info(fmt.Sprintf("Create Account: [%s]", account.AccountUID))
 
 	return account, nil
 }
@@ -99,12 +116,12 @@ func (uc *Usecase) disableAccount(ctx context.Context, accountID entities.Accoun
 	account := &entities.Account{
 		AccountUID: accountID,
 		Disabled:   true,
-		UpdateTS:   time.Now().UTC().UnixMilli(),
+		UpdateTS:   entities.TS(),
 	}
 
 	err := uc.account.UpdateAccount(ctx, account)
 
-	uc.log.Info(fmt.Sprintf("Disable account: [%s]", account.AccountUID))
+	uc.log.Info(fmt.Sprintf("Disable Account: [%s]", account.AccountUID))
 
 	return err
 }

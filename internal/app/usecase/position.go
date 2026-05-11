@@ -184,8 +184,8 @@ func (uc *Usecase) getPositionsBySymbol(ctx context.Context, exchange entities.E
 	return positions, nil
 }
 
-func (uc *Usecase) checkPresentOpenPosition(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) error {
-	positions, err := uc.position.SelectAccountOpenPositions(ctx, exchange, accountUID)
+func (uc *Usecase) checkPresentOpenPosition(ctx context.Context, accountUID entities.AccountUID) error {
+	positions, err := uc.position.SelectAccountOpenPositions(ctx, accountUID)
 	if err != nil {
 		uc.log.Error(fmt.Sprintf("checkPresentOpenPosition:SelectAccountOpenPositions [account_uid: %v] error: %v", accountUID, err))
 		return apperror.ErrRequestError
@@ -351,6 +351,7 @@ func (uc *Usecase) checkPositionLiquidation(ctx context.Context, position *entit
 			position.Amount = 0
 			position.HoldAmount = 0
 			position.Margin = 0
+
 			if err := uc.updatePosition(ctx, position); err != nil {
 				uc.log.Error(fmt.Sprintf("checkPositionLiquidation:updatePosition [%+v] error: %v", *position, err))
 				return err

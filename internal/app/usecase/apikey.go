@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"DemoExchange/internal/app/apperror"
 	"DemoExchange/internal/app/entities"
@@ -20,7 +19,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string, coin
 	if err := uc.apikey.WithTx(ctx, func(ctx context.Context) error {
 		account, err := uc.getAccount(ctx, service, userID)
 		if err != nil {
-			uc.log.Error(fmt.Sprintf("CreateToken:getAccount [service: %s, user_id: %s] error: %v", service, userID, err))
+			uc.log.Error(fmt.Sprintf("CreateToken:getAccount [service: %s, user_id: %s, account: %s] error: %v", service, userID, account.AccountUID, err))
 			return err
 		}
 
@@ -75,7 +74,7 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string, coin
 		return "", err
 	}
 
-	uc.log.Info(fmt.Sprintf("CreateToken: [service: %s, user_id: %s, coin: %s, amount: %f]", service, userID, coin, amount))
+	uc.log.Info(fmt.Sprintf("Create Token: [account: %s, service: %s, user_id: %s, coin: %s, amount: %f]", key.AccountUID, service, userID, coin, amount))
 
 	return key.Token, nil
 }
@@ -88,7 +87,7 @@ func (uc *Usecase) DisableToken(ctx context.Context, token entities.Token) error
 	key := &entities.Key{
 		Token:    token,
 		Disabled: true,
-		UpdateTS: time.Now().UTC().UnixMilli(),
+		UpdateTS: entities.TS(),
 	}
 
 	err := uc.apikey.UpdateAccountKey(ctx, key)

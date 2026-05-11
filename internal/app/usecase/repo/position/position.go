@@ -127,18 +127,18 @@ func (s *Storage) SelectAccountPositions(ctx context.Context, exchange entities.
 	return positions, err
 }
 
-func (s *Storage) SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error) {
+func (s *Storage) SelectAccountOpenPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error) {
 	sql := `
 		SELECT account_uid, position_uid, exchange, symbol, position_mode, position_type, leverage, side, amount, price, margin, hold_amount, create_ts, update_ts 
 		FROM "position" 
-		WHERE exchange = $1 AND account_uid = $2 AND amount <> 0
+		WHERE account_uid = $1 AND amount <> 0
 	`
 	var (
 		rows pgx.Rows
 		err  error
 	)
 
-	rows, err = s.repo.Query(ctx, sql, exchange, accountUID)
+	rows, err = s.repo.Query(ctx, sql, accountUID)
 	if err != nil {
 		return nil, err
 	}

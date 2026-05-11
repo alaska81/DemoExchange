@@ -60,7 +60,7 @@ type PositionStorage interface {
 	SelectPositionBySide(ctx context.Context, accountUID entities.AccountUID, symbol entities.Symbol, side entities.PositionSide) (*entities.Position, error)
 	SelectPositionsBySymbol(ctx context.Context, accountUID entities.AccountUID, symbol entities.Symbol) (map[entities.PositionSide]*entities.Position, error)
 	SelectAccountPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
-	SelectAccountOpenPositions(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID) ([]*entities.Position, error)
+	SelectAccountOpenPositions(ctx context.Context, accountUID entities.AccountUID) ([]*entities.Position, error)
 	SelectOpenPositions(ctx context.Context) ([]*entities.Position, error)
 }
 
