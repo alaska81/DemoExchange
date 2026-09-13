@@ -107,7 +107,6 @@ func (uc *Usecase) SetPositionMarginType(ctx context.Context, exchange entities.
 		}
 
 		for _, position := range positions {
-			position := position
 			if position.Amount != 0 {
 				return apperror.ErrSetMarginType.Wrap(apperror.ErrPositionExists)
 			}
@@ -135,7 +134,6 @@ func (uc *Usecase) SetPositionLeverage(ctx context.Context, exchange entities.Ex
 		}
 
 		for _, position := range positions {
-			position := position
 			if position.Amount != 0 {
 				return apperror.ErrSetLeverage.Wrap(apperror.ErrPositionExists)
 			}
@@ -328,7 +326,6 @@ func (uc *Usecase) ProcessOpenPositions(ctx context.Context) error {
 	uc.log.Info("ProcessOpenPositions: ", len(positions))
 
 	for _, position := range positions {
-		position := position
 		go func() {
 			uc.chPositions <- position
 		}()

@@ -97,6 +97,6 @@ type Markets interface {
 }
 
 type Logger interface {
-	Info(args ...interface{})
-	Error(args ...interface{})
+	Info(args ...any)
+	Error(args ...any)
 }

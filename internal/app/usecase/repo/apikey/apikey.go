@@ -2,6 +2,7 @@ package apikey
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 
@@ -83,7 +84,7 @@ func (s *Storage) SelectAccountUID(ctx context.Context, token entities.Token) (e
 		if err == pgx.ErrNoRows {
 			return "", apperror.ErrTokenNotFound
 		}
-		return "", apperror.ErrRequestError
+		return "", fmt.Errorf("%w: %v", apperror.ErrRequestError, err)
 	}
 
 	return accountUID, nil

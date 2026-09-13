@@ -1,10 +1,10 @@
 package webserver
 
 type Responce struct {
-	Success bool        `json:"success"`
-	Return  interface{} `json:"return,omitempty"`
-	Error   string      `json:"error,omitempty"`
-	Time    string      `json:"time"`
+	Success bool   `json:"success"`
+	Return  any    `json:"return,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Time    string `json:"time"`
 }
 
 type AccountCloseRequest struct {
@@ -16,7 +16,7 @@ type CreateTokenRequest struct {
 	// Exchange string `json:"exchange"`
 	Service string         `json:"service"`
 	UserID  string         `json:"user_id"`
-	Deposit DepositRequest `json:"deposit,omitempty"`
+	Deposit DepositRequest `json:"deposit"`
 }
 
 type DisableTokenRequest struct {

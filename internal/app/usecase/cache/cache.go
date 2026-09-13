@@ -6,7 +6,7 @@ import (
 )
 
 type Logger interface {
-	Info(args ...interface{})
+	Info(args ...any)
 }
 
 type Values[K comparable, V any] map[K]V

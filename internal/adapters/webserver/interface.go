@@ -46,10 +46,10 @@ type Usecase interface {
 }
 
 type Logger interface {
-	Info(args ...interface{})
-	Infof(format string, args ...interface{})
-	Trace(args ...interface{})
-	Tracef(format string, args ...interface{})
-	Error(args ...interface{})
-	Errorf(format string, args ...interface{})
+	Info(args ...any)
+	Infof(format string, args ...any)
+	Trace(args ...any)
+	Tracef(format string, args ...any)
+	Error(args ...any)
+	Errorf(format string, args ...any)
 }

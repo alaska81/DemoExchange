@@ -64,7 +64,6 @@ func New(cfg Config, markets Markets, tickers Tickers, orderbook Orderbook, usec
 		// WriteTimeout: time.Duration(Conf.TimeoutGin) * time.Second,
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS11,
-			PreferServerCipherSuites: true,
 			SessionTicketsDisabled:   true,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,

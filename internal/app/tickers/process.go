@@ -21,7 +21,7 @@ type Client interface {
 }
 
 type Logger interface {
-	Info(args ...interface{})
+	Info(args ...any)
 }
 
 type Service struct {
