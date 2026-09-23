@@ -42,7 +42,7 @@ func (r *Routes) authTokenMiddleware() gin.HandlerFunc {
 
 		accountUID, err := r.usecase.GetAccountUID(ctx, entities.Token(token))
 		if err != nil {
-			r.log.Errorf("authTokenMiddleware:GetAccountUID error: %v [url: %v, headers: %v]", err, c.Request.URL, c.Request.Header)
+			r.log.Errorf("authTokenMiddleware:GetAccountUID error: %v [token: %s, url: %v, headers: %v, remoteAddr: %s]", err, token, c.Request.URL, c.Request.Header, c.Request.RemoteAddr)
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{
 				"error": "Invalid API-key",
 				"time":  time.Now().Format("2006-01-02 15:04:05"),
