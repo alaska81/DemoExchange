@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +24,11 @@ type Account struct {
 }
 
 type AccountUID string
+
+func (u AccountUID) CacheUID() string {
+	sum := sha256.Sum256([]byte(u))
+	return hex.EncodeToString(sum[:])
+}
 
 func NewAccount(service, userID string) *Account {
 	ts := TS()

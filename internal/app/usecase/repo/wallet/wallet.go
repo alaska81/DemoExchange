@@ -12,8 +12,7 @@ import (
 
 const codeDivisionByZero = "22012"
 
-//lint:ignore ST1005 strings capitalized
-var ErrInsufficientFunds = errors.New("Insufficient funds")
+var ErrInsufficientFunds = errors.New("Insufficient funds") //nolint
 
 type Repository interface {
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
@@ -37,22 +36,22 @@ func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error
 }
 
 func (s *Storage) SelectBalances(ctx context.Context, wallet entities.Wallet) (entities.Balances, error) {
-	result := make(entities.Balances, 0)
+	balances := make(entities.Balances)
 
 	sql := `SELECT coin, total, hold FROM wallet WHERE exchange = $1 AND account_uid = $2`
 
 	rows, err := s.repo.Query(ctx, sql, wallet.Exchange, wallet.AccountUID)
 	if err != nil {
-		return result, err
+		return balances, err
 	}
+
+	defer rows.Close()
 
 	var (
 		coin  entities.Coin
 		total float64
 		hold  float64
 	)
-
-	balances := make(entities.Balances)
 
 	_, err = pgx.ForEachRow(rows, []any{&coin, &total, &hold}, func() error {
 		balances[coin] = entities.Balance{
@@ -86,10 +85,8 @@ func (s *Storage) SubtractTotalCoin(ctx context.Context, wallet entities.Wallet)
 
 	err := s.repo.Exec(ctx, sql, wallet.Exchange, wallet.AccountUID, wallet.Balance.Coin, wallet.Balance.Total, wallet.UpdateTS)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
-			if pgErr.Code == codeDivisionByZero {
-				return ErrInsufficientFunds
-			}
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == codeDivisionByZero {
+			return ErrInsufficientFunds
 		}
 	}
 

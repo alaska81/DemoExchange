@@ -2,6 +2,10 @@
 GET http://localhost:44444/v1/market/symbols?exchange=demo_futures HTTP/1.1
 content-type: application/json
 
+###
+GET https://demo-exchange.cryptorobotics.net/v1/market/symbols?exchange=demo_futures HTTP/1.1
+content-type: application/json
+
 
 
 ###
@@ -70,6 +74,11 @@ secret: 769d459d2ef20b0846bee9e50364435ba451f4d8
 GET http://localhost:44444/v1/wallet/balances?exchange=demo_futures HTTP/1.1
 Content-Type: application/json
 Token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+### 
+GET https://demo-exchange.cryptorobotics.net/v1/wallet/balances?exchange=demo_spot HTTP/1.1
+content-type: application/json
+token: b11df7f429cd46934b8bb94dd68c7145ea2dc373
 
 
 
@@ -171,6 +180,11 @@ token: 024e5a544c031305a7a96552d0f80620217c26a3
 GET http://localhost:44444/v1/order/list?exchange=demo_futures&status=open HTTP/1.1
 content-type: application/json
 token: 024e5a544c031305a7a96552d0f80620217c26a3
+
+### 
+GET https://demo-exchange.cryptorobotics.net/v1/order/list?exchange=demo_futures HTTP/1.1
+content-type: application/json
+token: b14fd25383a5d7c8c0f5de23cf6ee1194b867aed
 
 
 

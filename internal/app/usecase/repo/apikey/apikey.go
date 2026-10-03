@@ -55,6 +55,8 @@ func (s *Storage) SelectAccountKeys(ctx context.Context, accountUID entities.Acc
 		return result, err
 	}
 
+	defer rows.Close()
+
 	var (
 		token    entities.Token
 		createTS int64

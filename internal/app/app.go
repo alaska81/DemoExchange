@@ -153,5 +153,6 @@ func (a *App) Run(ctx context.Context, cancel context.CancelFunc) error {
 }
 
 func (a *App) Stop() {
+	a.webserver.WaitStop()
 	a.pool.Close()
 }

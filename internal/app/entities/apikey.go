@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	"DemoExchange/internal/app/pkg/hash"
@@ -15,6 +17,11 @@ type Key struct {
 }
 
 type Token string
+
+func (t Token) CacheUID() string {
+	sum := sha256.Sum256([]byte(t))
+	return hex.EncodeToString(sum[:])
+}
 
 func NewToken(accountUID AccountUID) *Key {
 	ts := TS()

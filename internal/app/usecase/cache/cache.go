@@ -20,9 +20,9 @@ type Cache[K comparable, V any] struct {
 }
 
 // New creates a new instance of Cache
-func New[K comparable, V any](log Logger) *Cache[K, V] {
+func New[K comparable, V any](name string, log Logger) *Cache[K, V] {
 	return &Cache[K, V]{
-		name:   fmt.Sprintf("%T", *new(V)),
+		name:   name,
 		mu:     sync.RWMutex{},
 		values: make(Values[K, V]),
 		log:    log,
@@ -59,18 +59,4 @@ func (c *Cache[K, V]) Delete(uid K) {
 
 	delete(c.values, uid)
 	c.log.Info(fmt.Sprintf("Cache [%s] Delete: %v", c.name, uid))
-}
-
-// List returns all values from cache
-func (c *Cache[K, V]) List() []V {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	values := make([]V, 0, len(c.values))
-
-	for _, value := range c.values {
-		values = append(values, value)
-	}
-
-	return values
 }

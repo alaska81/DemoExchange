@@ -84,6 +84,8 @@ func (s *Storage) SelectPositionsBySymbol(ctx context.Context, accountUID entiti
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var position entities.Position
 
 	positions := make(map[entities.PositionSide]*entities.Position)
@@ -114,6 +116,8 @@ func (s *Storage) SelectAccountPositions(ctx context.Context, exchange entities.
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var position entities.Position
 
 	positions := make([]*entities.Position, 0)
@@ -143,6 +147,8 @@ func (s *Storage) SelectAccountOpenPositions(ctx context.Context, accountUID ent
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var position entities.Position
 
 	positions := make([]*entities.Position, 0)
@@ -171,6 +177,8 @@ func (s *Storage) SelectOpenPositions(ctx context.Context) ([]*entities.Position
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	var position entities.Position
 

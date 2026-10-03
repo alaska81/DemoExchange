@@ -1,10 +1,11 @@
 package transaction
 
 import (
-	"DemoExchange/internal/app/entities"
 	"context"
 
 	"github.com/jackc/pgx/v5"
+
+	"DemoExchange/internal/app/entities"
 )
 
 type Repository interface {
@@ -57,6 +58,8 @@ func (s *Storage) SelectAccountTransactions(ctx context.Context, exchange entiti
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	var transaction entities.Transaction
 

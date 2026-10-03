@@ -94,11 +94,13 @@ func (c *Connection) WithTx(ctx context.Context, fn func(ctx context.Context) er
 		return err
 	}
 
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
 	ctx = injectTx(ctx, tx)
 
-	err = fn(ctx)
-	if err != nil {
-		_ = tx.Rollback(ctx)
+	if err := fn(ctx); err != nil {
 		return err
 	}
 

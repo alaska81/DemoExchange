@@ -80,7 +80,32 @@ func (uc *Usecase) CreateToken(ctx context.Context, service, userID string, coin
 }
 
 func (uc *Usecase) GetAccountUID(ctx context.Context, token entities.Token) (entities.AccountUID, error) {
-	return uc.apikey.SelectAccountUID(ctx, token)
+	uid := token.CacheUID()
+
+	if accountUID, ok := uc.cacheAccounts.Get(uid); ok {
+		return accountUID, nil
+	}
+
+	result, err, _ := uc.accountGroup.Do(uid, func() (any, error) {
+		if accountUID, ok := uc.cacheAccounts.Get(uid); ok {
+			return accountUID, nil
+		}
+
+		accountUID, err := uc.apikey.SelectAccountUID(ctx, token)
+		if err != nil {
+			return entities.AccountUID(""), err
+		}
+
+		uc.cacheAccounts.Set(uid, accountUID)
+
+		return accountUID, nil
+	})
+
+	if err != nil {
+		return entities.AccountUID(""), err
+	}
+
+	return result.(entities.AccountUID), nil
 }
 
 func (uc *Usecase) DisableToken(ctx context.Context, token entities.Token) error {
@@ -91,6 +116,9 @@ func (uc *Usecase) DisableToken(ctx context.Context, token entities.Token) error
 	}
 
 	err := uc.apikey.UpdateAccountKey(ctx, key)
+
+	uid := token.CacheUID()
+	uc.cacheAccounts.Delete(uid)
 
 	uc.log.Info(fmt.Sprintf("Disable Token: [%s]", token))
 

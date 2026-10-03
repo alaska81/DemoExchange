@@ -9,8 +9,7 @@ import (
 	"DemoExchange/internal/app/entities"
 )
 
-//lint:ignore ST1005 strings capitalized
-var ErrOrderNotFound = errors.New("Order not found")
+var ErrOrderNotFound = errors.New("Order not found") //nolint
 
 type Repository interface {
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
@@ -92,6 +91,8 @@ func (s *Storage) SelectOrders(ctx context.Context, exchange entities.Exchange, 
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var order entities.Order
 
 	orders := make([]*entities.Order, 0)
@@ -120,6 +121,8 @@ func (s *Storage) SelectPendingOrders(ctx context.Context) ([]*entities.Order, e
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	var (
 		order  entities.Order
@@ -152,6 +155,8 @@ func (s *Storage) SelectPendingOrdersBySymbol(ctx context.Context, exchange enti
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	var order entities.Order
 

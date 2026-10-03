@@ -74,7 +74,6 @@ type Cache[K comparable, V any] interface {
 	Set(uid K, value V)
 	Get(uid K) (value V, ok bool)
 	Delete(uid K)
-	List() []V
 }
 
 type Order interface {

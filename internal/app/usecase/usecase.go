@@ -1,6 +1,10 @@
 package usecase
 
 import (
+	"context"
+
+	"golang.org/x/sync/singleflight"
+
 	"DemoExchange/internal/app/entities"
 	"DemoExchange/internal/app/markets"
 	"DemoExchange/internal/app/tickers"
@@ -12,7 +16,6 @@ import (
 	"DemoExchange/internal/app/usecase/repo/position"
 	"DemoExchange/internal/app/usecase/repo/transaction"
 	"DemoExchange/internal/app/usecase/repo/wallet"
-	"context"
 )
 
 const lenBufferOrders = 100
@@ -34,8 +37,13 @@ type Usecase struct {
 	position    PositionStorage
 	transaction TransactionStorage
 
-	cacheOrders    Cache[string, *entities.Order]
-	cachePositions Cache[string, *entities.Position]
+	accountGroup      singleflight.Group
+	accountGroupByUID singleflight.Group
+
+	cacheAccounts      Cache[string, entities.AccountUID]
+	cacheAccountsByUID Cache[string, *entities.Account]
+	cacheOrders        Cache[string, *entities.Order]
+	cachePositions     Cache[string, *entities.Position]
 
 	chOrders    chan *orders.Order
 	chPositions chan *entities.Position
@@ -65,8 +73,10 @@ func New(cfg Config, repo Connection, tickers Tickers, markets Markets, log Logg
 		position:    position.New(repo),
 		transaction: transaction.New(repo),
 
-		cacheOrders:    cache.New[string, *entities.Order](log),
-		cachePositions: cache.New[string, *entities.Position](log),
+		cacheAccounts:      cache.New[string, entities.AccountUID]("Accounts", log),
+		cacheAccountsByUID: cache.New[string, *entities.Account]("AccountsByUID", log),
+		cacheOrders:        cache.New[string, *entities.Order]("Orders", log),
+		cachePositions:     cache.New[string, *entities.Position]("Positions", log),
 
 		chOrders:    make(chan *orders.Order, lenBufferOrders),
 		chPositions: make(chan *entities.Position),

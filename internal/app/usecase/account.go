@@ -10,7 +10,32 @@ import (
 )
 
 func (uc *Usecase) GetAccountByUID(ctx context.Context, accountUID entities.AccountUID) (*entities.Account, error) {
-	return uc.account.SelectAccountByUID(ctx, accountUID)
+	uid := accountUID.CacheUID()
+
+	if account, ok := uc.cacheAccountsByUID.Get(uid); ok {
+		return account, nil
+	}
+
+	result, err, _ := uc.accountGroupByUID.Do(uid, func() (any, error) {
+		if account, ok := uc.cacheAccountsByUID.Get(uid); ok {
+			return account, nil
+		}
+
+		account, err := uc.account.SelectAccountByUID(ctx, accountUID)
+		if err != nil {
+			return nil, err
+		}
+
+		uc.cacheAccountsByUID.Set(uid, account)
+
+		return account, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.(*entities.Account), nil
 }
 
 func (uc *Usecase) SetAccountPositionMode(ctx context.Context, exchange entities.Exchange, accountUID entities.AccountUID, positionMode entities.PositionMode) error {
@@ -76,6 +101,9 @@ func (uc *Usecase) AccountClose(ctx context.Context, service, userID string) err
 				return err
 			}
 		}
+
+		uid := account.AccountUID.CacheUID()
+		uc.cacheAccountsByUID.Delete(uid)
 
 		return uc.disableAccount(ctx, account.AccountUID)
 	})

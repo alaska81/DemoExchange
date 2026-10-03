@@ -40,10 +40,10 @@ func (uc *Usecase) NewOrder(ctx context.Context, o *entities.Order) error {
 		return err
 	}
 
-	if err := uc.order.WithTx(ctx, func(ctx context.Context) error {
-		muOrder.Lock()
-		defer muOrder.Unlock()
+	muOrder.Lock()
+	defer muOrder.Unlock()
 
+	if err := uc.order.WithTx(ctx, func(ctx context.Context) error {
 		if err := order.HoldBalance(ctx, uc, uc.log); err != nil {
 			uc.log.Error(fmt.Sprintf("NewOrder:HoldBalance [%+v] error: %v", *order.GetOrder(), err))
 			return err

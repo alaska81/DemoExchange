@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,9 @@ type Server struct {
 
 	srv    *http.Server
 	srvTLS *http.Server
+
+	closeOnce sync.Once
+	close     chan struct{}
 }
 
 func New(cfg Config, markets Markets, tickers Tickers, orderbook Orderbook, usecase Usecase, log Logger) (*Server, error) {
@@ -41,6 +45,8 @@ func New(cfg Config, markets Markets, tickers Tickers, orderbook Orderbook, usec
 		orderbook: orderbook,
 		usecase:   usecase,
 		log:       log,
+
+		close: make(chan struct{}),
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -63,8 +69,8 @@ func New(cfg Config, markets Markets, tickers Tickers, orderbook Orderbook, usec
 		// ReadHeaderTimeout: time.Duration(Conf.TimeoutGin) * time.Second,
 		// WriteTimeout: time.Duration(Conf.TimeoutGin) * time.Second,
 		TLSConfig: &tls.Config{
-			MinVersion:               tls.VersionTLS11,
-			SessionTicketsDisabled:   true,
+			MinVersion:             tls.VersionTLS11,
+			SessionTicketsDisabled: true,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -110,17 +116,31 @@ func (s *Server) Start(ctx context.Context) error {
 		chErr <- eg.Wait()
 	}()
 
-	var err error
-
 	select {
 	case <-ctx.Done():
-		s.log.Tracef("Server stop: %s", ctx.Err())
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		err = s.srv.Shutdown(ctx)
-	case err = <-chErr:
-		s.log.Errorf("Server error: %s", err.Error())
-	}
 
-	return err
+		err := s.srv.Shutdown(ctx)
+		s.log.Tracef("Server stopped: %v", err)
+
+		err = s.srvTLS.Shutdown(ctx)
+		s.log.Tracef("Server stopped TLS: %v", err)
+
+		cancel()
+
+		s.stop()
+		return nil
+	case err := <-chErr:
+		s.log.Errorf("Server error: %v", err)
+		s.stop()
+		return err
+	}
+}
+
+func (s *Server) stop() {
+	s.closeOnce.Do(func() { close(s.close) })
+}
+
+func (s *Server) WaitStop() {
+	<-s.close
 }
